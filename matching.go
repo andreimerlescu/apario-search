@@ -2,10 +2,20 @@ package main
 
 import (
 	"github.com/andreimerlescu/gematria"
+	"github.com/andreimerlescu/textee"
 	"github.com/xrash/smetrics"
 	"log"
 	"strings"
 )
+
+func matchesExactTextee(query string, textee *textee.Textee) bool {
+	for word := range textee.Gematrias {
+		if word == query {
+			return true
+		}
+	}
+	return false
+}
 
 func matchesCondition(query string, pageWords map[string]gematria.Gematria, queryGematria gematria.Gematria, algo string) bool {
 	if strings.Contains(query, " ") {

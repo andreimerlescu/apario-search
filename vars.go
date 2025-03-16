@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"github.com/andreimerlescu/configurable"
 	"regexp"
 	"sync"
@@ -15,7 +14,7 @@ var (
 	isCacheReady  atomic.Bool
 	dataChanged   bool // Flag for data changes during hourly scan
 	cacheFile     = "live-writer-db-cache.json"
-	dir           = flag.String("dir", ".", "Directory to scan for ocr.*.txt files")
+	//dir           = flag.String("dir", ".", "Directory to scan for ocr.*.txt files")
 	groupingRegex = regexp.MustCompile(`\((?:[^()]+|\([^()]*\))+\)`)
 	cfg           configurable.IConfigurable
 

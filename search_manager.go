@@ -1,10 +1,43 @@
 package main
 
 import (
-	"golang.org/x/net/websocket"
+	"github.com/gorilla/websocket"
 	"sync"
 	"time"
 )
+
+func (sm *SearchManager) runSearch(session *SearchSession) {
+	defer func() {
+		sm.mu.Lock()
+		delete(sm.activeSearches, session.Keyword)
+		sm.mu.Unlock()
+
+		for _, ch := range session.Channels {
+			close(ch)
+		}
+		close(session.Done)
+		sm.cacheResults(session)
+	}()
+
+	results := search(session.Keyword)
+	session.mu.Lock()
+	defer session.mu.Unlock()
+
+	for category, pageIDs := range results.Categories {
+		if ch, ok := session.Channels[category]; ok {
+			for _, pageID := range pageIDs {
+				// Optionally send full match details via WebSocket
+				for _, match := range results.Matches[pageID] {
+					if match.Category == category {
+						ch <- pageID // Simple version: just page ID
+						// TODO: Add option to send MatchDetail if needed
+					}
+				}
+			}
+		}
+		session.Results[category] = pageIDs
+	}
+}
 
 // Get or create a search session
 func (sm *SearchManager) getOrCreateSession(keyword string) *SearchSession {
@@ -46,40 +79,6 @@ func (sm *SearchManager) getOrCreateSession(keyword string) *SearchSession {
 	sm.activeSearches[keyword] = session
 	go sm.runSearch(session)
 	return session
-}
-
-// Run the search and stream results
-func (sm *SearchManager) runSearch(session *SearchSession) {
-	defer func() {
-		// Clean up
-		sm.mu.Lock()
-		delete(sm.activeSearches, session.Keyword)
-		sm.mu.Unlock()
-
-		for _, ch := range session.Channels {
-			close(ch)
-		}
-		close(session.Done)
-		sm.cacheResults(session)
-	}()
-
-	cacheMutex.RLock()
-	defer cacheMutex.RUnlock()
-
-	// Simulate search (replace with your actual search logic)
-	for pageID, data := range pageCache {
-		// Example exact match
-		if data.Textee.Input == session.Keyword {
-			session.Channels["exact/textee"] <- pageID
-			session.Results["exact/textee"] = append(session.Results["exact/textee"], pageID)
-		}
-		// Example Gematria match (simplified)
-		if data.Textee.Input == session.Keyword+" the wise" { // Placeholder logic
-			session.Channels["gematria/simple"] <- pageID
-			session.Results["gematria/simple"] = append(session.Results["gematria/simple"], pageID)
-		}
-		// Add your fuzzy and other Gematria logic here
-	}
 }
 
 // Cache completed search results

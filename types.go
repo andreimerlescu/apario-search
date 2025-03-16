@@ -1,8 +1,9 @@
 package main
 
 import (
+	"github.com/andreimerlescu/gematria"
 	"github.com/andreimerlescu/textee"
-	"golang.org/x/net/websocket"
+	"github.com/gorilla/websocket"
 	"sync"
 	"time"
 )
@@ -19,6 +20,7 @@ type SearchAnalysis struct {
 	Ands []string
 	Nots []string
 }
+
 type SearchSession struct {
 	mu       sync.Mutex
 	Keyword  string
@@ -38,4 +40,19 @@ type SearchManager struct {
 	activeSearches map[string]*SearchSession
 	cache          map[string]*SearchResult
 	mu             sync.Mutex
+}
+
+// MatchDetail captures the specifics of a match
+type MatchDetail struct {
+	Text       string            `json:"text"`     // The matched word from Textee.Gematrias
+	Gematria   gematria.Gematria `json:"gematria"` // The Gematria struct that matched
+	TexTeeTexT string            `json:"original"` // The full Textee.Input for context
+	Category   string            `json:"category"` // e.g., "exact/textee", "gematria/simple"
+}
+
+// SearchResults holds categorized results, hit counts, and match details
+type SearchResults struct {
+	Categories map[string][]string      // e.g., "exact/textee" -> page IDs
+	HitCounts  map[string]int           // page ID -> total hits across categories
+	Matches    map[string][]MatchDetail // page ID -> list of match details
 }

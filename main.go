@@ -3,71 +3,51 @@ package main
 import (
 	"context"
 	"flag"
-	"github.com/andreimerlescu/go-smartchan"
 	"log"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 )
 
 func main() {
+	// Parse flags
+	dir := flag.String("dir", ".", "Directory to scan for ocr.*.txt files")
+	port := flag.String("port", "17004", "HTTP port to use 1000-65534")
 	flag.Parse()
+
+	// Set up context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// Handle signals for shutdown
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-sigChan
-		log.Println("Received shutdown signal")
+		log.Println("Received shutdown signal, stopping...")
 		cancel()
 	}()
 
-	// Start web server immediately
-	go webserver(ctx)
-
 	// Build or load cache
+	log.Println("Initializing cache...")
 	loadOrBuildCache(*dir)
+	for !isCacheReady.Load() {
+		log.Println("Waiting for cache to be ready...")
+		time.Sleep(100 * time.Millisecond) // Poll until ready
+	}
+	log.Println("Cache initialized successfully")
 
-	log.Println("live-writer-db is fully operational")
-}
-
-func search(query string) []string {
-	cacheMutex.RLock()
-	defer cacheMutex.RUnlock()
-
-	analysis := AnalyzeQuery(query)
-	results := make(map[string]struct{})
-
-	ctx := context.Background()
-	sch := go_smartchan.NewSmartChan(1000)
+	// Start web server with wait group for shutdown
 	var wg sync.WaitGroup
-
-	// Process the entire analysis in one go
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		findPagesForWord(ctx, sch, analysis)
+		webserver(ctx, *port, *dir)
 	}()
 
-	go func() {
-		wg.Wait()
-		sch.Close()
-	}()
-
-	// Collect results
-	for data := range sch.Chan() {
-		if pageID, ok := data.(string); ok {
-			results[pageID] = struct{}{}
-		}
-	}
-
-	// Convert to slice
-	var finalResults []string
-	for pageID := range results {
-		finalResults = append(finalResults, pageID)
-	}
-
-	return finalResults
+	<-ctx.Done()
+	wg.Wait()
+	log.Println("live-writer-db has shut down")
 }

@@ -3,3 +3,4 @@ summarize.sh
 *.log
 live-writer-db
 bin/*
+*.json
