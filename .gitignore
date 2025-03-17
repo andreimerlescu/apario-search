@@ -1,6 +1,6 @@
 summarize.sh
-*.md
+summ*.md
 *.log
-
+apario-search
 bin/*
 *.json
