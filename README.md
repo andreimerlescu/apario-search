@@ -531,3 +531,23 @@ YAHUAH! Thank you daddy! $APARIO is part of that journey with me.
 Are you going to be part of history in the most biblical way possible? Sow seeds of faith and expect nothing in return?
 
 I now where my heart stands in all of this. Where is yours? I love you! [director who](http://directorwho.com). 
+
+## Project Value
+
+───────────────────────────────────────────────────────────────────────────────
+Language                 Files     Lines   Blanks  Comments     Code Complexity
+───────────────────────────────────────────────────────────────────────────────
+Go                          17      1347      125        52     1170        215
+License                      1       187       77         0      110          0
+Markdown                     1       533       75         0      458          0
+───────────────────────────────────────────────────────────────────────────────
+Total                       19      2067      277        52     1738        215
+───────────────────────────────────────────────────────────────────────────────
+Estimated Cost to Develop (organic) $48,266
+Estimated Schedule Effort (organic) 4.35 months
+Estimated People Required (organic) 0.99
+───────────────────────────────────────────────────────────────────────────────
+Processed 101253 bytes, 0.101 megabytes (SI)
+───────────────────────────────────────────────────────────────────────────────
+
+Another $48,266 of contributions that I've made to the Great Awakening. Use it. I am building it for you!
