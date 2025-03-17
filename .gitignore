@@ -1,6 +1,6 @@
 summarize.sh
 *.md
 *.log
-live-writer-db
+
 bin/*
 *.json

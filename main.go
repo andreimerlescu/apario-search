@@ -49,5 +49,5 @@ func main() {
 
 	<-ctx.Done()
 	wg.Wait()
-	log.Println("live-writer-db has shut down")
+	log.Println("apario-search has shut down")
 }

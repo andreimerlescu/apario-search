@@ -1,4 +1,4 @@
-module github.com/andreimerlescu/live-writer-db
+module github.com/andreimerlescu/apario-search
 
 go 1.23.4
 
@@ -12,7 +12,6 @@ require (
 	github.com/k0kubun/pp v3.0.1+incompatible
 	github.com/stretchr/testify v1.9.0
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1
-	golang.org/x/net v0.25.0
 )
 
 require (
@@ -43,6 +42,7 @@ require (
 	github.com/ugorji/go/codec v1.2.12 // indirect
 	golang.org/x/arch v0.8.0 // indirect
 	golang.org/x/crypto v0.23.0 // indirect
+	golang.org/x/net v0.25.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/text v0.15.0 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect

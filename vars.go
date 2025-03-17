@@ -13,7 +13,7 @@ var (
 	cacheMutex    sync.RWMutex
 	isCacheReady  atomic.Bool
 	dataChanged   bool // Flag for data changes during hourly scan
-	cacheFile     = "live-writer-db-cache.json"
+	cacheFile     = "apario-search-cache.json"
 	//dir           = flag.String("dir", ".", "Directory to scan for ocr.*.txt files")
 	groupingRegex = regexp.MustCompile(`\((?:[^()]+|\([^()]*\))+\)`)
 	cfg           configurable.IConfigurable
