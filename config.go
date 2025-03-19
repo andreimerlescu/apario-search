@@ -1,9 +1,16 @@
 package main
 
-import "github.com/andreimerlescu/configurable"
+import (
+	check "github.com/andreimerlescu/checkfs"
+	"github.com/andreimerlescu/checkfs/file"
+	"github.com/andreimerlescu/configurable"
+	"os"
+)
 
 func init() {
 	cfg = configurable.New()
+	cfg.NewString(kDir, ".", "Directory to scan for ocr.*.txt files")
+	cfg.NewString(kPort, "17004", "HTTP port to use 1000-65534")
 	cfg.NewString(kAlgo, "jaro-winkler", "Algorithm choice: jaro, hamming, soundex, ukkonen, wagner-fisher")
 	cfg.NewFloat64(kJaroThreshold, 0.71, "1.0 means exact match 0.0 means no match; default is 0.71")
 	cfg.NewFloat64(kJaroWinklerThreshold, 0.71, "using the JaroWinkler method, define the threshold that is tolerated; default is 0.71")
@@ -18,5 +25,23 @@ func init() {
 	cfg.NewInt(kWagnerFisherDCost, 1, "delete cost ; when removing a char to find a match ; increase the score by this number ; default = 1")
 	cfg.NewInt(kWagnerFisherMaxSubs, 2, "maximum number of substitutions allowed for a word to be considered a match ; higher value = lower accurate ; lower value = higher accuracy ; min = 0; default = 2")
 	cfg.NewInt(kHammingMaxSubs, 2, "maximum number of substitutions allowed for a word to be considered a match ; higher value = lower accuracy ; min = 1 ; default = 2")
+}
 
+func loadConfigs() error {
+	if fn := os.Getenv(configEnvKey); len(fn) > 0 {
+		if err := check.File(fn, file.Options{Exists: true}); err != nil {
+			if err = cfg.Parse(fn); err != nil {
+				return err
+			}
+		}
+	} else if err := check.File(configFile, file.Options{Exists: true}); err != nil {
+		if err = cfg.Parse(configFile); err != nil {
+			return err
+		}
+	} else {
+		if err = cfg.Parse(""); err != nil {
+			return err
+		}
+	}
+	return nil
 }

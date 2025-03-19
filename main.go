@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"flag"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -12,10 +12,11 @@ import (
 )
 
 func main() {
-	// Parse flags
-	dir := flag.String("dir", ".", "Directory to scan for ocr.*.txt files")
-	port := flag.String("port", "17004", "HTTP port to use 1000-65534")
-	flag.Parse()
+	err := loadConfigs()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 
 	// Set up context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
@@ -32,7 +33,10 @@ func main() {
 
 	// Build or load cache
 	log.Println("Initializing cache...")
-	loadOrBuildCache(*dir)
+	err = buildCache(*cfg.String(kDir))
+	if err != nil {
+		log.Fatal(err)
+	}
 	for !isCacheReady.Load() {
 		log.Println("Waiting for cache to be ready...")
 		time.Sleep(100 * time.Millisecond) // Poll until ready
@@ -44,7 +48,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		webserver(ctx, *port, *dir)
+		webserver(ctx, *cfg.String(kPort), *cfg.String(kDir))
 	}()
 
 	<-ctx.Done()

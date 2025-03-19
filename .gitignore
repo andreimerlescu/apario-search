@@ -4,3 +4,4 @@ summ*.md
 apario-search
 bin/*
 *.json
+.idea

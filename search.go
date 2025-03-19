@@ -1,16 +1,31 @@
 package main
 
 import (
-	"context"
+	"bufio"
+	"encoding/json"
+	"fmt"
+	"github.com/RoaringBitmap/roaring"
 	"github.com/andreimerlescu/gematria"
-	"github.com/andreimerlescu/go-smartchan"
 	"github.com/gin-gonic/gin"
+	"io"
+	"log"
 	"net/http"
+	"os"
 	"sort"
-	"sync"
+	"strconv"
+	"strings"
 )
 
 func handleSearch(c *gin.Context) {
+	// Set up logging to error.log
+	logFile, err := os.OpenFile("error.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Printf("Failed to open error.log: %v", err)
+		// Proceed without file logging but log to stderr
+	}
+	defer logFile.Close()
+	logger := log.New(logFile, "", log.LstdFlags)
+
 	query := c.Query("q")
 	if query == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing query"})
@@ -20,7 +35,16 @@ func handleSearch(c *gin.Context) {
 	sortParam := c.Query("sort")
 	rank := sortParam == "ranked"
 
-	results := search(query)
+	results, err := search(query)
+	if err != nil {
+		logger.Printf("Search error for query %q: %v", query, err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Internal server error",
+			"message": "Check the server logs to see what happened.",
+		})
+		return
+	}
+
 	if rank {
 		// Return ranked results with scores and match details
 		type rankedPage struct {
@@ -60,96 +84,184 @@ func handleSearch(c *gin.Context) {
 	}
 }
 
-// search performs a categorized search and returns results with hit counts and match details
-func search(query string) SearchResults {
-	cacheMutex.RLock()
-	defer cacheMutex.RUnlock()
-
+func search(query string) (SearchResults, error) {
+	// Analyze the query
 	analysis := AnalyzeQuery(query)
-	results := make(map[string]struct{}) // Temporary set for initial filtering
-	categorizedResults := make(map[string][]string)
-	hitCounts := make(map[string]int)
-	matches := make(map[string][]MatchDetail)
+	resultBitmap := roaring.New()
 
-	ctx := context.Background()
-	sch := go_smartchan.NewSmartChan(1000)
-	var wg sync.WaitGroup
+	// Open the word index file
+	wordIndex, err := os.Open(wordIndexFile)
+	if err != nil {
+		return SearchResults{}, fmt.Errorf("failed to open word index file: %w", err)
+	}
+	defer wordIndex.Close()
 
-	// Process the entire analysis in one go
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		findPagesForWord(ctx, sch, analysis)
-	}()
+	// Decode the word header
+	var wordHeader map[string][2]int64
+	if err := json.NewDecoder(wordIndex).Decode(&wordHeader); err != nil {
+		return SearchResults{}, fmt.Errorf("failed to decode word header: %w", err)
+	}
 
-	go func() {
-		wg.Wait()
-		sch.Close()
-	}()
-
-	// Collect results
-	for data := range sch.Chan() {
-		if pageID, ok := data.(string); ok {
-			results[pageID] = struct{}{}
+	// Process AND conditions
+	for _, andCond := range analysis.Ands {
+		words := strings.Fields(andCond)
+		temp := roaring.New()
+		for _, word := range words {
+			if offsetLen, ok := wordHeader[word]; ok {
+				b := roaring.New()
+				data := make([]byte, offsetLen[1])
+				if _, err := wordIndex.Seek(offsetLen[0], io.SeekStart); err != nil {
+					return SearchResults{}, fmt.Errorf("failed to seek in word index: %w", err)
+				}
+				if _, err := wordIndex.Read(data); err != nil {
+					return SearchResults{}, fmt.Errorf("failed to read from word index: %w", err)
+				}
+				if err := b.UnmarshalBinary(data); err != nil {
+					return SearchResults{}, fmt.Errorf("failed to unmarshal bitmap: %w", err)
+				}
+				temp.Or(b)
+			}
+		}
+		if resultBitmap.IsEmpty() {
+			resultBitmap = temp
+		} else {
+			resultBitmap.And(temp)
 		}
 	}
 
-	// Categorize results and track hits with details
-	algo := *cfg.String(kAlgo)
-	for pageID := range results {
-		data, exists := pageCache[pageID]
-		if !exists {
-			continue
+	// Process NOT conditions
+	for _, notCond := range analysis.Nots {
+		words := strings.Fields(notCond)
+		temp := roaring.New()
+		for _, word := range words {
+			if offsetLen, ok := wordHeader[word]; ok {
+				b := roaring.New()
+				data := make([]byte, offsetLen[1])
+				if _, err := wordIndex.Seek(offsetLen[0], io.SeekStart); err != nil {
+					return SearchResults{}, fmt.Errorf("failed to seek in word index for NOT condition: %w", err)
+				}
+				if _, err := wordIndex.Read(data); err != nil {
+					return SearchResults{}, fmt.Errorf("failed to read from word index for NOT condition: %w", err)
+				}
+				if err := b.UnmarshalBinary(data); err != nil {
+					return SearchResults{}, fmt.Errorf("failed to unmarshal bitmap for NOT condition: %w", err)
+				}
+				temp.Or(b)
+			}
 		}
+		resultBitmap.AndNot(temp)
+	}
 
+	// Open cache files
+	cache, err := os.Open(cacheFile)
+	if err != nil {
+		return SearchResults{}, fmt.Errorf("failed to open cache file: %w", err)
+	}
+	defer cache.Close()
+
+	cacheIdx, err := os.Open(cacheIndexFile)
+	if err != nil {
+		return SearchResults{}, fmt.Errorf("failed to open cache index file: %w", err)
+	}
+	defer cacheIdx.Close()
+
+	// Initialize results
+	results := SearchResults{
+		Categories: make(map[string][]string),
+		HitCounts:  make(map[string]int),
+		Matches:    make(map[string][]MatchDetail),
+	}
+
+	// Build page ID to offset mapping
+	scanner := bufio.NewScanner(cacheIdx)
+	idToOffset := make(map[int][2]int64)
+	for scanner.Scan() {
+		parts := strings.Split(scanner.Text(), " ")
+		if len(parts) != 3 {
+			continue // Skip malformed lines
+		}
+		id, err := strconv.Atoi(parts[0])
+		if err != nil {
+			return SearchResults{}, fmt.Errorf("failed to parse page ID: %w", err)
+		}
+		offset, err := strconv.ParseInt(parts[1], 10, 64)
+		if err != nil {
+			return SearchResults{}, fmt.Errorf("failed to parse offset: %w", err)
+		}
+		length, err := strconv.ParseInt(parts[2], 10, 64)
+		if err != nil {
+			return SearchResults{}, fmt.Errorf("failed to parse length: %w", err)
+		}
+		idToOffset[id] = [2]int64{offset, length}
+	}
+	if err := scanner.Err(); err != nil {
+		return SearchResults{}, fmt.Errorf("error reading cache index: %w", err)
+	}
+
+	// Process matching pages
+	itr := resultBitmap.Iterator()
+	for itr.HasNext() {
+		pageID := int(itr.Next())
+		offsetLen, ok := idToOffset[pageID]
+		if !ok {
+			continue // Page ID not found in index
+		}
+		data := make([]byte, offsetLen[1])
+		if _, err := cache.Seek(offsetLen[0], io.SeekStart); err != nil {
+			return SearchResults{}, fmt.Errorf("failed to seek in cache file: %w", err)
+		}
+		if _, err := cache.Read(data); err != nil {
+			return SearchResults{}, fmt.Errorf("failed to read from cache file: %w", err)
+		}
+		var page PageData
+		if err := json.Unmarshal(data, &page); err != nil {
+			return SearchResults{}, fmt.Errorf("failed to unmarshal page data: %w", err)
+		}
+		// Track which categories this page matches
+		categoryMatched := make(map[string]bool)
+
+		// Extract query terms from AND conditions
 		for _, andCond := range analysis.Ands {
-			queryGematria := gematria.FromString(andCond)
+			words := strings.Fields(andCond)
+			for _, word := range words {
+				queryGematria := gematria.FromString(word)
 
-			// Exact match on Textee words
-			if matchesExactTextee(andCond, data.Textee) {
-				categorizedResults["exact/textee"] = append(categorizedResults["exact/textee"], pageID)
-				hitCounts[pageID]++
-				matches[pageID] = append(matches[pageID], MatchDetail{
-					Text:       andCond,
-					Gematria:   queryGematria,
-					TexTeeTexT: data.Textee.Input,
-					Category:   "exact/textee",
-				})
-			}
-
-			// Fuzzy match with selected algorithm
-			for word := range data.Textee.Gematrias {
-				if matchesConditionSingle(andCond, word, algo) {
-					categorizedResults["fuzzy/"+algo] = append(categorizedResults["fuzzy/"+algo], pageID)
-					hitCounts[pageID]++
-					matches[pageID] = append(matches[pageID], MatchDetail{
-						Text:       word,
-						Gematria:   data.Textee.Gematrias[word],
-						TexTeeTexT: data.Textee.Input,
-						Category:   "fuzzy/" + algo,
-					})
+				// Check exact match
+				if matchesExactTextee(word, page.Textee) {
+					categoryMatched["exact/textee"] = true
 				}
-			}
 
-			// Gematria match
-			for word, gematriaVal := range data.Textee.Gematrias {
-				if matchesConditionGematria(gematriaVal, queryGematria) {
-					categorizedResults["gematria/simple"] = append(categorizedResults["gematria/simple"], pageID)
-					hitCounts[pageID]++
-					matches[pageID] = append(matches[pageID], MatchDetail{
-						Text:       word,
-						Gematria:   gematriaVal,
-						TexTeeTexT: data.Textee.Input,
-						Category:   "gematria/simple",
-					})
+				// Check fuzzy matches using existing functions
+				for _, algo := range []string{"jaro", "jaro-winkler", "soundex", "hamming", "ukkonen", "wagner-fisher"} {
+					category := "fuzzy/" + algo
+					for pw := range page.Textee.Gematrias {
+						if matchesConditionSingle(word, pw, algo) {
+							categoryMatched[category] = true
+							break // Found a match for this algo, move to next
+						}
+					}
+				}
+
+				// Check gematria matches using existing functions
+				gematriaTypes := []string{"simple", "english", "jewish", "eights", "mystery", "majestic"}
+				for _, gemType := range gematriaTypes {
+					category := "gematria/" + gemType
+					for _, pg := range page.Textee.Gematrias {
+						if matchesConditionGematria(pg, queryGematria) {
+							categoryMatched[category] = true
+							break // Found a match for this gematria type
+						}
+					}
 				}
 			}
 		}
+
+		// Populate results for matched categories
+		for category := range categoryMatched {
+			results.Categories[category] = append(results.Categories[category], page.PageIdentifier)
+			results.HitCounts[page.PageIdentifier]++
+		}
 	}
 
-	return SearchResults{
-		Categories: categorizedResults,
-		HitCounts:  hitCounts,
-		Matches:    matches,
-	}
+	return results, nil
 }

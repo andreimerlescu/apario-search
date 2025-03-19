@@ -1,126 +1,259 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
+	"github.com/RoaringBitmap/roaring"
 	"github.com/andreimerlescu/textee"
-	"log"
+	"io"
 	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 )
 
-func loadOrBuildCache(dir string) {
-	if _, err := os.Stat(cacheFile); err == nil {
-		log.Println("Loading cache from file...")
-		if err := loadCacheFromFile(); err != nil {
-			log.Printf("Failed to load cache: %v, rebuilding...", err)
-			buildCache(dir)
-		}
-	} else {
-		log.Println("No cache file found, building cache...")
-		buildCache(dir)
-	}
-	isCacheReady.Store(true)
-}
-
-func buildCache(dir string) {
+func buildCache(dir string) (err error) {
 	cacheMutex.Lock()
 	defer cacheMutex.Unlock()
 
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	// Open files for writing (create mode)
+	cacheWriter, cacheFile, err := FileAppender(cacheFile, os.O_CREATE|os.O_WRONLY)
+	if err != nil {
+		return err
+	}
+	defer cacheFile.Close()
+
+	idxWriter, idxFile, err := FileAppender(cacheIndexFile, os.O_CREATE|os.O_WRONLY)
+	if err != nil {
+		return err
+	}
+	defer idxFile.Close()
+
+	wordWriter, wordFile, err := FileAppender("word_postings.txt", os.O_CREATE|os.O_WRONLY)
+	if err != nil {
+		return err
+	}
+	defer wordFile.Close()
+
+	gemWriter, gemFile, err := FileAppender("gematria_postings.txt", os.O_CREATE|os.O_WRONLY)
+	if err != nil {
+		return err
+	}
+	defer gemFile.Close()
+
+	pageID := 0
+	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() || !strings.HasPrefix(info.Name(), "ocr.") || !strings.HasSuffix(info.Name(), ".txt") {
+			return nil
+		}
+
+		pageData, wordPostings, gemPostings, err := ProcessOCRFile(path, dir, pageID)
 		if err != nil {
-			log.Printf("Error accessing %s: %v", path, err)
-			return err // Propagate directory access errors
+			return err
 		}
-		if info.IsDir() {
-			return nil // Skip directories
-		}
-		if !strings.HasPrefix(info.Name(), "ocr.") || !strings.HasSuffix(info.Name(), ".txt") {
-			return nil // Skip non-OCR text files
-		}
-		relPath, err := filepath.Rel(dir, path)
-		if err != nil {
-			log.Printf("Error computing relative path for %s: %v", path, err)
-			return nil // Skip if relative path fails
-		}
-		if !strings.HasPrefix(relPath, string(filepath.Separator)+"pages") && !strings.HasPrefix(relPath, "pages") {
-			return nil // Skip files not in pages/ subdirectories
+		if pageData == nil {
+			return nil // Skip if not in 'pages'
 		}
 
-		// Define identifiers
-		pageIdentifier := relPath
-		docDir := filepath.Dir(filepath.Dir(relPath))
-		documentIdentifier := docDir
-		coverPageIdentifier := filepath.Join(docDir, "pages", "page.000001.json")
-
-		// Read file content
-		content, err := os.ReadFile(path)
-		if err != nil {
-			log.Printf("Error reading file %s: %v", path, err)
-			return nil // Skip if file can't be read
+		// Append to cache and index
+		if err := AppendToCache(cacheWriter, idxWriter, pageData, pageID, cacheFile); err != nil {
+			return err
 		}
 
-		// Create Textee instance
-		text, textErr := textee.NewTextee(string(content))
-		if textErr != nil {
-			log.Printf("Skipping %s: failed to create Textee: %v", path, textErr)
-			return nil // Skip this file but continue processing others
+		// Write postings
+		for _, posting := range wordPostings {
+			_, err = wordWriter.WriteString(posting + "\n")
+			if err != nil {
+				return err
+			}
+		}
+		for _, posting := range gemPostings {
+			_, err = gemWriter.WriteString(posting + "\n")
+			if err != nil {
+				return err
+			}
 		}
 
-		// Store in cache
-		pageCache[pageIdentifier] = &PageData{
-			Textee:              text,                // Use the successfully created Textee
-			PageIdentifier:      pageIdentifier,      // Full relative path (e.g., "fc91a290.../pages/ocr.000001.txt")
-			DocumentIdentifier:  documentIdentifier,  // Document directory (e.g., "fc91a290...")
-			CoverPageIdentifier: coverPageIdentifier, // Assumed cover file (e.g., "fc91a290.../pages/page.000001.json")
-		}
-
-		// Update document cache if this is the first page for the document
-		if _, exists := documentCache[documentIdentifier]; !exists {
-			documentCache[documentIdentifier] = coverPageIdentifier
-		}
-
-		return nil // Continue walking
+		pageID++
+		return nil
 	})
 	if err != nil {
-		log.Printf("Error walking directory %s: %v", dir, err)
-	}
-
-	saveCacheToFile() // Persist the cache
-}
-
-type CacheData struct {
-	Pages     map[string]*PageData
-	Documents map[string]string
-}
-
-func saveCacheToFile() {
-	cacheData := CacheData{
-		Pages:     pageCache,
-		Documents: documentCache,
-	}
-	data, err := json.MarshalIndent(cacheData, "", "  ")
-	if err != nil {
-		log.Printf("Error marshaling cache: %v", err)
-		return
-	}
-	if err := os.WriteFile(cacheFile, data, 0644); err != nil {
-		log.Printf("Error writing cache file: %v", err)
-	}
-}
-
-func loadCacheFromFile() error {
-	data, err := os.ReadFile(cacheFile)
-	if err != nil {
 		return err
 	}
-	cacheData := CacheData{}
-	if err := json.Unmarshal(data, &cacheData); err != nil {
+
+	// Flush writers
+	if err = cacheWriter.Flush(); err != nil {
 		return err
 	}
-	cacheMutex.Lock()
-	defer cacheMutex.Unlock()
-	pageCache = cacheData.Pages
-	documentCache = cacheData.Documents
+	if err = idxWriter.Flush(); err != nil {
+		return err
+	}
+	if err = wordWriter.Flush(); err != nil {
+		return err
+	}
+	if err = gemWriter.Flush(); err != nil {
+		return err
+	}
+
+	// Build indexes
+	if err = buildIndex("word_postings.txt", wordIndexFile); err != nil {
+		return err
+	}
+	if err = buildIndex("gematria_postings.txt", gemIndexFile); err != nil {
+		return err
+	}
 	return nil
+}
+
+func buildIndex(postingsFile, indexFile string) error {
+	// Sort postings (simplified; use external sort for large files)
+	lines, _ := os.ReadFile(postingsFile)
+	sorted := strings.Split(string(lines), "\n")
+	sort.Strings(sorted)
+
+	// Build bitmaps
+	out, _ := os.Create(indexFile)
+	defer out.Close()
+	writer := bufio.NewWriter(out)
+
+	currentKey := ""
+	bitmap := roaring.New()
+	header := make(map[string][2]int64) // key -> [offset, length]
+	_, _ = out.Seek(0, io.SeekCurrent)
+
+	for _, line := range sorted {
+		if line == "" {
+			continue
+		}
+		parts := strings.Split(line, " ")
+		key, id := parts[0], parts[1]
+		idInt, _ := strconv.Atoi(id)
+
+		if key != currentKey && currentKey != "" {
+			// Write previous bitmap
+			offset, _ := out.Seek(0, io.SeekCurrent)
+			data, _ := bitmap.MarshalBinary()
+			_, err := writer.Write(data)
+			if err != nil {
+				return err
+			}
+			header[currentKey] = [2]int64{offset, int64(len(data))}
+			bitmap.Clear()
+		}
+		currentKey = key
+		bitmap.Add(uint32(idInt))
+	}
+	if currentKey != "" {
+		offset, _ := out.Seek(0, io.SeekCurrent)
+		data, _ := bitmap.MarshalBinary()
+		_, err := writer.Write(data)
+		if err != nil {
+			return err
+		}
+		header[currentKey] = [2]int64{offset, int64(len(data))}
+	}
+
+	// Write header
+	err := writer.Flush()
+	if err != nil {
+		return err
+	}
+	_, err = out.Seek(0, io.SeekStart)
+	if err != nil {
+		return err
+	}
+	err = json.NewEncoder(out).Encode(header)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// FileAppender opens a file with the specified mode and returns a buffered writer and file handle.
+func FileAppender(filename string, mode int) (*bufio.Writer, *os.File, error) {
+	file, err := os.OpenFile(filename, mode, 0644)
+	if err != nil {
+		return nil, nil, err
+	}
+	writer := bufio.NewWriter(file)
+	return writer, file, nil
+}
+
+// ProcessOCRFile processes an OCR text file and returns PageData and postings.
+func ProcessOCRFile(path, baseDir string, pageID int) (*PageData, []string, []string, error) {
+	relPath, err := filepath.Rel(baseDir, path)
+	if err != nil || !strings.HasPrefix(relPath, "pages") {
+		return nil, nil, nil, nil // Skip if not in 'pages' directory
+	}
+
+	docDir := filepath.Dir(filepath.Dir(relPath))
+	pageData := &PageData{
+		PageIdentifier:      relPath,
+		DocumentIdentifier:  docDir,
+		CoverPageIdentifier: filepath.Join(docDir, "pages", "page.000001.json"),
+	}
+
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	text, err := textee.NewTextee(string(content))
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	pageData.Textee = text
+
+	wordPostings := generateWordPostings(text, pageID)
+	gemPostings := generateGematriaPostings(text, pageID)
+
+	return pageData, wordPostings, gemPostings, nil
+}
+
+// AppendToCache appends PageData to the cache file and updates the index.
+func AppendToCache(cacheWriter *bufio.Writer, idxWriter *bufio.Writer, pageData *PageData, pageID int, cacheFile *os.File) error {
+	offset, err := cacheFile.Seek(0, os.SEEK_CUR)
+	if err != nil {
+		return err
+	}
+	data, err := json.Marshal(pageData)
+	if err != nil {
+		return err
+	}
+	_, err = cacheWriter.Write(data)
+	if err != nil {
+		return err
+	}
+	_, err = cacheWriter.WriteString("\n")
+	if err != nil {
+		return err
+	}
+	length := int64(len(data))
+	_, err = idxWriter.WriteString(strconv.Itoa(pageID) + " " + strconv.FormatInt(offset, 10) + " " + strconv.FormatInt(length, 10) + "\n")
+	return err
+}
+
+// generateWordPostings generates word postings for a given Textee and page ID.
+func generateWordPostings(text *textee.Textee, pageID int) []string {
+	var postings []string
+	for word := range text.Gematrias {
+		postings = append(postings, word+" "+strconv.Itoa(pageID))
+	}
+	return postings
+}
+
+// generateGematriaPostings generates gematria postings for a given Textee and page ID.
+func generateGematriaPostings(text *textee.Textee, pageID int) []string {
+	var postings []string
+	for _, g := range text.Gematrias {
+		postings = append(postings,
+			"english_"+strconv.FormatUint(g.English, 10)+" "+strconv.Itoa(pageID),
+			"simple_"+strconv.FormatUint(g.Simple, 10)+" "+strconv.Itoa(pageID),
+			"jewish_"+strconv.FormatUint(g.Jewish, 10)+" "+strconv.Itoa(pageID),
+			"mystery_"+strconv.FormatUint(g.Mystery, 10)+" "+strconv.Itoa(pageID),
+			"majestic_"+strconv.FormatUint(g.Majestic, 10)+" "+strconv.Itoa(pageID),
+			"eights_"+strconv.FormatUint(g.Eights, 10)+" "+strconv.Itoa(pageID),
+		)
+	}
+	return postings
 }

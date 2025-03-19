@@ -15,4 +15,6 @@ const (
 	kWagnerFisherMaxSubs       string = "wagner-fisher-max-subs"
 	kHammingMaxSubs            string = "hamming-max-subs"
 	kAlgo                      string = "algo"
+	kDir                       string = "dir"
+	kPort                      string = "port"
 )

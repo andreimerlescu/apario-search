@@ -19,7 +19,10 @@ func (sm *SearchManager) runSearch(session *SearchSession) {
 		sm.cacheResults(session)
 	}()
 
-	results := search(session.Keyword)
+	results, err := search(session.Keyword)
+	if err != nil {
+		return
+	}
 	session.mu.Lock()
 	defer session.mu.Unlock()
 
