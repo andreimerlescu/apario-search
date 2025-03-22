@@ -5,6 +5,7 @@ import (
 	"github.com/andreimerlescu/checkfs/file"
 	"github.com/andreimerlescu/configurable"
 	"os"
+	"path/filepath"
 )
 
 func init() {
@@ -25,6 +26,8 @@ func init() {
 	cfg.NewInt(kWagnerFisherDCost, 1, "delete cost ; when removing a char to find a match ; increase the score by this number ; default = 1")
 	cfg.NewInt(kWagnerFisherMaxSubs, 2, "maximum number of substitutions allowed for a word to be considered a match ; higher value = lower accurate ; lower value = higher accuracy ; min = 0; default = 2")
 	cfg.NewInt(kHammingMaxSubs, 2, "maximum number of substitutions allowed for a word to be considered a match ; higher value = lower accuracy ; min = 1 ; default = 2")
+	cfg.NewString(kCacheDir, filepath.Join(".", "cache"), "Path to the search cache index directory")
+	cfg.NewString(kWriterOutputDir, filepath.Join(".", "writer-db"), "Path to the writer database output")
 }
 
 func loadConfigs() error {

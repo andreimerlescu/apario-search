@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"github.com/andreimerlescu/textee"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -52,7 +53,7 @@ func ProcessOCRFile(path, baseDir string, pageID int) (*PageData, []string, []st
 
 // AppendToCache appends PageData to the cache file and updates the index.
 func AppendToCache(cacheWriter *bufio.Writer, idxWriter *bufio.Writer, pageData *PageData, pageID int, cacheFile *os.File) error {
-	offset, err := cacheFile.Seek(0, os.SEEK_CUR)
+	offset, err := cacheFile.Seek(0, io.SeekCurrent)
 	if err != nil {
 		return err
 	}

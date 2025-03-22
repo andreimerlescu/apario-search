@@ -17,4 +17,7 @@ const (
 	kAlgo                      string = "algo"
 	kDir                       string = "dir"
 	kPort                      string = "port"
+
+	kWriterOutputDir string = "writer-output-dir"
+	kCacheDir        string = "cache-dir"
 )

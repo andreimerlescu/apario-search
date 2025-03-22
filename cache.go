@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,25 +12,35 @@ func buildCache(dir string) (err error) {
 	defer cacheMutex.Unlock()
 
 	// Open files for writing (create mode)
-	cacheWriter, cacheFile, err := FileAppender(cacheFile, os.O_CREATE|os.O_WRONLY)
+	var cacheWriter *bufio.Writer
+	var cachedFile *os.File
+	cacheWriter, cachedFile, err = FileAppender(
+		filepath.Join(*cfg.String(kCacheDir), cacheFile),
+		os.O_CREATE|os.O_WRONLY)
 	if err != nil {
 		return err
 	}
-	defer cacheFile.Close()
+	defer cachedFile.Close()
 
-	idxWriter, idxFile, err := FileAppender(cacheIndexFile, os.O_CREATE|os.O_WRONLY)
+	idxWriter, idxFile, err := FileAppender(
+		filepath.Join(*cfg.String(kCacheDir), cacheIndexFile),
+		os.O_CREATE|os.O_WRONLY)
 	if err != nil {
 		return err
 	}
 	defer idxFile.Close()
 
-	wordWriter, wordFile, err := FileAppender("word_postings.txt", os.O_CREATE|os.O_WRONLY)
+	wordWriter, wordFile, err := FileAppender(
+		filepath.Join(*cfg.String(kCacheDir), "word_postings.txt"),
+		os.O_CREATE|os.O_WRONLY)
 	if err != nil {
 		return err
 	}
 	defer wordFile.Close()
 
-	gemWriter, gemFile, err := FileAppender("gematria_postings.txt", os.O_CREATE|os.O_WRONLY)
+	gemWriter, gemFile, err := FileAppender(
+		filepath.Join(*cfg.String(kCacheDir), "gematria_postings.txt"),
+		os.O_CREATE|os.O_WRONLY)
 	if err != nil {
 		return err
 	}
@@ -37,7 +48,10 @@ func buildCache(dir string) (err error) {
 
 	pageID := 0
 	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() || !strings.HasPrefix(info.Name(), "ocr.") || !strings.HasSuffix(info.Name(), ".txt") {
+		if err != nil ||
+			info.IsDir() ||
+			!strings.HasPrefix(info.Name(), "ocr.") ||
+			!strings.HasSuffix(info.Name(), ".txt") {
 			return nil
 		}
 
@@ -50,7 +64,7 @@ func buildCache(dir string) (err error) {
 		}
 
 		// Append to cache and index
-		if err := AppendToCache(cacheWriter, idxWriter, pageData, pageID, cacheFile); err != nil {
+		if err := AppendToCache(cacheWriter, idxWriter, pageData, pageID, cachedFile); err != nil {
 			return err
 		}
 
@@ -90,10 +104,10 @@ func buildCache(dir string) (err error) {
 	}
 
 	// Build indexes
-	if err = buildIndex("word_postings.txt", wordIndexFile); err != nil {
+	if err = buildIndex(filepath.Join(*cfg.String(kCacheDir), "word_postings.txt"), wordIndexFile); err != nil {
 		return err
 	}
-	if err = buildIndex("gematria_postings.txt", gemIndexFile); err != nil {
+	if err = buildIndex(filepath.Join(*cfg.String(kCacheDir), "gematria_postings.txt"), gemIndexFile); err != nil {
 		return err
 	}
 	return nil
