@@ -1,6 +1,9 @@
 package main
 
 const (
+	kCacheDir                  string = "cache-dir"
+	kDir                       string = "dir"
+	kPort                      string = "port"
 	kJaroThreshold             string = "jaro-threshold"
 	kJaroWinklerThreshold      string = "jaro-winkler-threshold"
 	kJaroWinklerBoostThreshold string = "jaro-winkler-boost-threshold"
@@ -14,10 +17,4 @@ const (
 	kWagnerFisherDCost         string = "wagner-fisher-dcost"
 	kWagnerFisherMaxSubs       string = "wagner-fisher-max-subs"
 	kHammingMaxSubs            string = "hamming-max-subs"
-	kAlgo                      string = "algo"
-	kDir                       string = "dir"
-	kPort                      string = "port"
-
-	kWriterOutputDir string = "writer-output-dir"
-	kCacheDir        string = "cache-dir"
 )

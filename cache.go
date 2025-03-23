@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,11 +15,12 @@ func buildCache(dir string) (err error) {
 	// Open files for writing (create mode)
 	var cacheWriter *bufio.Writer
 	var cachedFile *os.File
+	theCacheFilePath := filepath.Join(*cfg.String(kCacheDir), cacheFile)
 	cacheWriter, cachedFile, err = FileAppender(
-		filepath.Join(*cfg.String(kCacheDir), cacheFile),
+		theCacheFilePath,
 		os.O_CREATE|os.O_WRONLY)
 	if err != nil {
-		return err
+		return fmt.Errorf("the FileAppender(%s) failed with: %v", theCacheFilePath, err)
 	}
 	defer cachedFile.Close()
 

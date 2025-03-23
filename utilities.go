@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"github.com/andreimerlescu/textee"
 	"io"
 	"os"
@@ -15,7 +16,7 @@ import (
 func FileAppender(filename string, mode int) (*bufio.Writer, *os.File, error) {
 	file, err := os.OpenFile(filename, mode, 0644)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to open %s due to err: %v", filename, err)
 	}
 	writer := bufio.NewWriter(file)
 	return writer, file, nil
