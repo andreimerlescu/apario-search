@@ -107,7 +107,7 @@ func processNewSubdirectory(subdir string) error {
 			return nil
 		}
 
-		pageData, wordPostings, gemPostings, err := ProcessOCRFile(path, *cfg.String(kDir), pageID)
+		pageData, wordPostings, gemPostings, err := ProcessOCRFile(path, pageID)
 		if err != nil {
 			return err
 		}

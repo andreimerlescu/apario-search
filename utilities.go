@@ -3,7 +3,9 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/andreimerlescu/gematria"
 	"github.com/andreimerlescu/textee"
 	"io"
 	"os"
@@ -23,28 +25,90 @@ func FileAppender(filename string, mode int) (*bufio.Writer, *os.File, error) {
 }
 
 // ProcessOCRFile processes an OCR text file and returns PageData and postings.
-func ProcessOCRFile(path, baseDir string, pageID int) (*PageData, []string, []string, error) {
-	relPath, err := filepath.Rel(baseDir, path)
-	if err != nil || !strings.HasPrefix(relPath, "pages") {
+func ProcessOCRFile(path string, pageID int) (*PageData, []string, []string, error) {
+	relPath := filepath.Dir(path)
+	if !strings.HasSuffix(relPath, "pages") {
 		return nil, nil, nil, nil // Skip if not in 'pages' directory
 	}
 
-	docDir := filepath.Dir(filepath.Dir(relPath))
-	pageData := &PageData{
-		PageIdentifier:      relPath,
-		DocumentIdentifier:  docDir,
-		CoverPageIdentifier: filepath.Join(docDir, "pages", "page.000001.json"),
+	// record.json contains the document identifier
+	docDir := filepath.Dir(relPath)
+	var dataInRecordJson = make(map[string]interface{})
+	recordJsonBytes, readErr := os.ReadFile(filepath.Join(docDir, "record.json"))
+	if readErr != nil {
+		return nil, nil, nil, readErr
+	}
+	jsonErr := json.Unmarshal(recordJsonBytes, &dataInRecordJson)
+	if jsonErr != nil {
+		return nil, nil, nil, jsonErr
+	}
+	documentIdentifier, ok := dataInRecordJson["identifier"].(string)
+	if !ok {
+		return nil, nil, nil, errors.New("no such field identifier in record.json")
 	}
 
+	// the page number is in the filename of the ocr.######.txt
+	var pageNumber int
+	_, err := fmt.Sscanf(filepath.Base(path), "ocr.%06d.txt", &pageNumber)
+	if err != nil {
+		fmt.Printf("Error parsing filename: %v\n", err)
+	}
+
+	// page.######.json contains the page identifier
+	var dataInPageJson = make(map[string]interface{})
+	pageJsonBytes, readErr := os.ReadFile(filepath.Join(relPath, fmt.Sprintf("page.%06d.json", pageNumber)))
+	if readErr != nil {
+		return nil, nil, nil, readErr
+	}
+	jsonErr = json.Unmarshal(pageJsonBytes, &dataInPageJson)
+	if jsonErr != nil {
+		return nil, nil, nil, jsonErr
+	}
+	pageIdentifier, ok := dataInPageJson["identifier"].(string)
+	if !ok {
+		return nil, nil, nil, fmt.Errorf("no such field identifier in page.%06d.json", pageNumber)
+	}
+
+	// page.000001.json contains the cover page identifier
+	var dataInCoverPageJson = make(map[string]interface{})
+	coverPageJsonBytes, readErr := os.ReadFile(filepath.Join(relPath, "page.000001.json"))
+	if readErr != nil {
+		return nil, nil, nil, readErr
+	}
+	jsonErr = json.Unmarshal(coverPageJsonBytes, &dataInCoverPageJson)
+	if jsonErr != nil {
+		return nil, nil, nil, jsonErr
+	}
+	coverPageIdentifier, ok := dataInCoverPageJson["identifier"].(string)
+	if !ok {
+		return nil, nil, nil, errors.New("missing identifier field in page.000001.json")
+	}
+
+	// gather the identifiers
+	pageData := &PageData{
+		PageIdentifier:      pageIdentifier,
+		DocumentIdentifier:  documentIdentifier,
+		CoverPageIdentifier: coverPageIdentifier,
+	}
+
+	// read the ocr full text file
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return nil, nil, nil, err
 	}
+
+	// calculate textee data for result
 	text, err := textee.NewTextee(string(content))
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	pageData.Textee = text
+
+	if len(pageData.Textee.Gematrias) == 0 && len(pageData.Textee.Substrings) > 0 {
+		for substring, _ := range pageData.Textee.Substrings {
+			pageData.Textee.Gematrias[substring] = gematria.FromString(substring)
+		}
+	}
 
 	wordPostings := generateWordPostings(text, pageID)
 	gemPostings := generateGematriaPostings(text, pageID)

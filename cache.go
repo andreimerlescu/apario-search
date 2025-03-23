@@ -52,7 +52,7 @@ func buildCache(dir string) (err error) {
 		}
 
 		if !info.IsDir() && strings.HasPrefix(info.Name(), "ocr.") && strings.HasSuffix(info.Name(), ".txt") {
-			pageData, wordPostings, gemPostings, err := ProcessOCRFile(path, dir, pageID)
+			pageData, wordPostings, gemPostings, err := ProcessOCRFile(path, pageID)
 			if err != nil {
 				return err
 			}
