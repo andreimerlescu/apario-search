@@ -76,25 +76,25 @@ func processNewSubdirectory(subdir string) error {
 	}
 
 	// Open files for appending
-	cacheWriter, cacheFile, err := FileAppender(cacheFile, os.O_APPEND|os.O_WRONLY)
+	cacheWriter, cacheFile, err := FileAppender(filepath.Join(*cfg.String(kCacheDir), cacheFile), os.O_APPEND|os.O_WRONLY)
 	if err != nil {
 		return err
 	}
 	defer cacheFile.Close()
 
-	idxWriter, idxFile, err := FileAppender(cacheIndexFile, os.O_APPEND|os.O_WRONLY)
+	idxWriter, idxFile, err := FileAppender(filepath.Join(*cfg.String(kCacheDir), cacheIndexFile), os.O_APPEND|os.O_WRONLY)
 	if err != nil {
 		return err
 	}
 	defer idxFile.Close()
 
-	wordWriter, wordFile, err := FileAppender("word_postings.txt", os.O_APPEND|os.O_WRONLY)
+	wordWriter, wordFile, err := FileAppender(filepath.Join(*cfg.String(kCacheDir), "word_postings.txt"), os.O_APPEND|os.O_WRONLY)
 	if err != nil {
 		return err
 	}
 	defer wordFile.Close()
 
-	gemWriter, gemFile, err := FileAppender("gematria_postings.txt", os.O_APPEND|os.O_WRONLY)
+	gemWriter, gemFile, err := FileAppender(filepath.Join(*cfg.String(kCacheDir), "gematria_postings.txt"), os.O_APPEND|os.O_WRONLY)
 	if err != nil {
 		return err
 	}
@@ -156,10 +156,10 @@ func processNewSubdirectory(subdir string) error {
 	}
 
 	// Rebuild the indexes
-	if err = buildIndex("word_postings.txt", wordIndexFile); err != nil {
+	if err = buildIndex(filepath.Join(*cfg.String(kCacheDir), "word_postings.txt"), wordIndexFile); err != nil {
 		return err
 	}
-	if err = buildIndex("gematria_postings.txt", gemIndexFile); err != nil {
+	if err = buildIndex(filepath.Join(*cfg.String(kCacheDir), "gematria_postings.txt"), gemIndexFile); err != nil {
 		return err
 	}
 
@@ -168,7 +168,7 @@ func processNewSubdirectory(subdir string) error {
 
 // getNextPageID retrieves the next available page ID by finding the maximum ID in cache_index.txt
 func getNextPageID() (int, error) {
-	file, err := os.Open(cacheIndexFile)
+	file, err := os.Open(filepath.Join(*cfg.String(kCacheDir), cacheIndexFile))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return 0, nil // If file doesn't exist, start at 0

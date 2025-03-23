@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -90,7 +91,7 @@ func search(query string) (SearchResults, error) {
 	resultBitmap := roaring.New()
 
 	// Open the word index file
-	wordIndex, err := os.Open(wordIndexFile)
+	wordIndex, err := os.Open(filepath.Join(*cfg.String(kCacheDir), wordIndexFile))
 	if err != nil {
 		return SearchResults{}, fmt.Errorf("failed to open word index file: %w", err)
 	}
@@ -153,13 +154,13 @@ func search(query string) (SearchResults, error) {
 	}
 
 	// Open cache files
-	cache, err := os.Open(cacheFile)
+	cache, err := os.Open(filepath.Join(*cfg.String(kCacheDir), cacheFile))
 	if err != nil {
 		return SearchResults{}, fmt.Errorf("failed to open cache file: %w", err)
 	}
 	defer cache.Close()
 
-	cacheIdx, err := os.Open(cacheIndexFile)
+	cacheIdx, err := os.Open(filepath.Join(*cfg.String(kCacheDir), cacheIndexFile))
 	if err != nil {
 		return SearchResults{}, fmt.Errorf("failed to open cache index file: %w", err)
 	}
