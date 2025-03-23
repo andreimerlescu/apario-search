@@ -2,6 +2,7 @@ package main
 
 const (
 	kCacheDir                  string = "cache-dir"
+	kErrorLog                  string = "error-log"
 	kDir                       string = "dir"
 	kPort                      string = "port"
 	kReaderDomain              string = "reader-domain"

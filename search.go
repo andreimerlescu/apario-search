@@ -8,7 +8,6 @@ import (
 	"github.com/andreimerlescu/gematria"
 	"github.com/gin-gonic/gin"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -18,15 +17,6 @@ import (
 )
 
 func handleSearch(c *gin.Context) {
-	// Set up logging to error.log
-	logFile, err := os.OpenFile("error.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Printf("Failed to open error.log: %v", err)
-		// Proceed without file logging but log to stderr
-	}
-	defer logFile.Close()
-	logger := log.New(logFile, "", log.LstdFlags)
-
 	query := c.Query("q")
 	if query == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing query"})
@@ -38,7 +28,7 @@ func handleSearch(c *gin.Context) {
 
 	results, err := search(query)
 	if err != nil {
-		logger.Printf("Search error for query %q: %v", query, err)
+		errorLogger.Printf("Search error for query %q: %v", query, err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Internal server error",
 			"message": "Check the server logs to see what happened.",

@@ -1,11 +1,14 @@
 package main
 
 import (
+	"errors"
 	check "github.com/andreimerlescu/checkfs"
+	"github.com/andreimerlescu/checkfs/directory"
 	"github.com/andreimerlescu/checkfs/file"
 	"github.com/andreimerlescu/configurable"
 	"os"
 	"path/filepath"
+	"strconv"
 )
 
 func init() {
@@ -13,6 +16,7 @@ func init() {
 	cfg.NewString(kDir, ".", "Directory to scan for ocr.*.txt files")
 	cfg.NewString(kPort, "18004", "HTTP port to use 1000-65534")
 	cfg.NewString(kCacheDir, filepath.Join(".", "cache"), "Path to the search cache index directory")
+	cfg.NewString(kErrorLog, filepath.Join(".", "error.log"), "Path to the error log")
 	cfg.NewString(kReaderDomain, "idoread.com", "Domain name of the project excluding protocol path or query from the URL")
 	cfg.NewFloat64(kJaroThreshold, 0.71, "1.0 means exact match 0.0 means no match; default is 0.71")
 	cfg.NewFloat64(kJaroWinklerThreshold, 0.71, "using the JaroWinkler method, define the threshold that is tolerated; default is 0.71")
@@ -35,21 +39,44 @@ func loadConfigs() error {
 			if err = cfg.Parse(fn); err != nil {
 				return err
 			} else {
-				return nil
+				goto check
 			}
 		}
 	} else if err := check.File(configFile, file.Options{Exists: true}); err == nil {
 		if err = cfg.Parse(configFile); err != nil {
 			return err
 		} else {
-			return nil
+			goto check
 		}
 	} else {
 		if err = cfg.Parse(""); err != nil {
 			return err
 		} else {
-			return nil
+			goto check
 		}
+	}
+check:
+	// verify the error log is writable
+	if len(*cfg.String(kErrorLog)) == 0 {
+		return errors.New("configurable error-log must be a path to the error.log but was blank")
+	}
+	// verify cache directory is writable
+	if err := check.Directory(*cfg.String(kCacheDir), directory.Options{RequireWrite: true, Exists: true}); err != nil {
+		return err
+	}
+	// verify apario-writer database directory
+	if err := check.Directory(*cfg.String(kDir), directory.Options{Exists: true}); err != nil {
+		return err
+	}
+	portInt, portErr := strconv.Atoi(*cfg.String(kPort))
+	if portErr != nil {
+		return portErr
+	}
+	if portInt < 1000 || portInt > 65535 {
+		return errors.New("cannot bind to port below 1000 or above 65535")
+	}
+	if len(*cfg.String(kReaderDomain)) == 0 {
+		return errors.New("cannot omit the reader-domain configurable")
 	}
 	return nil
 }

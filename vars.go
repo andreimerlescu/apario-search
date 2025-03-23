@@ -2,15 +2,15 @@ package main
 
 import (
 	"github.com/andreimerlescu/configurable"
+	"log"
 	"path/filepath"
 	"regexp"
 	"sync"
-	"sync/atomic"
 )
 
 var (
 	dataChanged    bool // Flag for data changes during hourly scan
-	isCacheReady   atomic.Bool
+	errorLogger    *log.Logger
 	cacheMutex     sync.RWMutex
 	cfg            configurable.IConfigurable
 	configFile     = filepath.Join(".", "config.yaml")

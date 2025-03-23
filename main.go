@@ -8,7 +8,6 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 )
 
 func main() {
@@ -18,45 +17,74 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Set up context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	cacheMutex = sync.RWMutex{}
+
+	// Set up logging to error.log
+	logFile, err := os.OpenFile("error.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Printf("Failed to open error.log: %v", err)
+		// Proceed without file logging but log to stderr
+	}
+	defer logFile.Close()
+	errorLogger = log.New(logFile, "", log.LstdFlags)
 
 	// Handle signals for shutdown
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		<-sigChan
-		log.Println("Received shutdown signal, stopping...")
-		cancel()
-	}()
 
 	wg := sync.WaitGroup{}
+
+	// Initialize cache
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		// Build or load cache
 		log.Println("Initializing cache...")
-		err = buildCache(*cfg.String(kDir))
-		if err != nil {
-			log.Fatal(err)
-		}
-		for !isCacheReady.Load() {
-			log.Println("Waiting for cache to be ready...")
-			time.Sleep(100 * time.Millisecond) // Poll until ready
+		if err := buildCache(*cfg.String(kDir)); err != nil {
+			errorLogger.Printf("Cache initialization failed: %v", err)
+			cancel() // Cancel context on error
+			return
 		}
 		log.Println("Cache initialized successfully")
 	}()
 
-	// Start web server with wait group for shutdown
+	// Start web server
 	wg.Add(1)
-	log.Printf("apario-search has started for %s with ", *cfg.String(kReaderDomain))
 	go func() {
 		defer wg.Done()
+		log.Printf("apario-search has started for %s", *cfg.String(kReaderDomain))
 		webserver(ctx, *cfg.String(kPort), *cfg.String(kDir))
 	}()
 
-	<-ctx.Done()
-	wg.Wait()
-	log.Println("apario-search has shut down")
+	// Wait for shutdown signal
+	select {
+	case sig := <-sigChan:
+		log.Printf("Received %v signal, initiating shutdown...", sig)
+		cancel() // Cancel the context to signal goroutines to stop
+
+		// Wait for all goroutines to complete with a timeout
+		done := make(chan struct{})
+		go func() {
+			wg.Wait()
+			close(done)
+		}()
+
+		select {
+		case <-done:
+			log.Println("apario-search has shut down gracefully")
+		case <-sigChan: // Second signal received
+			log.Println("Forcing immediate shutdown")
+			os.Exit(1)
+		}
+	case <-ctx.Done():
+		// Context was cancelled from within (e.g., cache build failed)
+		wg.Wait()
+		log.Println("apario-search has shut down due to internal cancellation")
+	}
+
+	// Final cleanup message
+	log.Println("Shutdown complete")
+
 }
