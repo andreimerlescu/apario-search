@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/andreimerlescu/gematria"
-	"github.com/andreimerlescu/textee"
 	"io"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/andreimerlescu/gematria"
+	"github.com/andreimerlescu/textee"
 )
 
 // FileAppender opens a file with the specified mode and returns a buffered writer and file handle.

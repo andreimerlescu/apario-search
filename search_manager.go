@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/gorilla/websocket"
 	"sync"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 func (sm *SearchManager) runSearch(session *SearchSession) {

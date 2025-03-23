@@ -2,13 +2,14 @@ package main
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
+	"strconv"
+
 	check "github.com/andreimerlescu/checkfs"
 	"github.com/andreimerlescu/checkfs/directory"
 	"github.com/andreimerlescu/checkfs/file"
 	"github.com/andreimerlescu/configurable"
-	"os"
-	"path/filepath"
-	"strconv"
 )
 
 func init() {

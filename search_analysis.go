@@ -1,11 +1,12 @@
 package main
 
 import (
-	"github.com/k0kubun/pp"
 	"log"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/k0kubun/pp"
 )
 
 func (sa *SearchAnalysis) parseOrsRegexp(ors []string) string {

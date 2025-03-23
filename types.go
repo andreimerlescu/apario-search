@@ -1,11 +1,12 @@
 package main
 
 import (
+	"sync"
+	"time"
+
 	"github.com/andreimerlescu/gematria"
 	"github.com/andreimerlescu/textee"
 	"github.com/gorilla/websocket"
-	"sync"
-	"time"
 )
 
 type PageData struct {

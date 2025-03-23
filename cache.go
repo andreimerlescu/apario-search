@@ -102,10 +102,10 @@ func buildCache(dir string) (err error) {
 	}
 
 	// Build indexes
-	if err = buildIndex(filepath.Join(*cfg.String(kCacheDir), "word_postings.txt"), wordIndexFile); err != nil {
+	if err = buildIndex(filepath.Join(*cfg.String(kCacheDir), "word_postings.txt"), filepath.Join(*cfg.String(kCacheDir), wordIndexFile)); err != nil {
 		return err
 	}
-	if err = buildIndex(filepath.Join(*cfg.String(kCacheDir), "gematria_postings.txt"), gemIndexFile); err != nil {
+	if err = buildIndex(filepath.Join(*cfg.String(kCacheDir), "gematria_postings.txt"), filepath.Join(*cfg.String(kCacheDir), gemIndexFile)); err != nil {
 		return err
 	}
 	return nil

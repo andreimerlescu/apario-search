@@ -3,12 +3,13 @@ package main
 import (
 	"bufio"
 	"context"
-	"github.com/fsnotify/fsnotify"
 	"log"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/fsnotify/fsnotify"
 )
 
 func checkDataChanges(ctx context.Context, dir string) {

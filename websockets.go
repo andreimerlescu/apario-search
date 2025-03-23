@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
 
 var upgrader = websocket.Upgrader{
@@ -55,14 +56,14 @@ func subscribeToSearch(conn *websocket.Conn, keyword string, subChannels []strin
 		for _, ch := range subChannels {
 			if results, ok := cached.Results[ch]; ok {
 				for _, pageID := range results {
-					conn.WriteJSON(map[string]interface{}{
+					_ = conn.WriteJSON(map[string]interface{}{
 						"channel": fmt.Sprintf("/results/%s/%s", keyword, ch),
 						"pageID":  pageID,
 					})
 				}
 			}
 		}
-		conn.WriteJSON(map[string]string{"status": "completed"})
+		_ = conn.WriteJSON(map[string]string{"status": "completed"})
 		return
 	}
 	sm.mu.Unlock()
@@ -81,7 +82,7 @@ func subscribeToSearch(conn *websocket.Conn, keyword string, subChannels []strin
 		if ch, ok := session.Channels[chName]; ok {
 			go func(ch chan string, chName string) {
 				for pageID := range ch {
-					conn.WriteJSON(map[string]interface{}{
+					_ = conn.WriteJSON(map[string]interface{}{
 						"channel": chName,
 						"pageID":  pageID,
 					})
@@ -92,5 +93,5 @@ func subscribeToSearch(conn *websocket.Conn, keyword string, subChannels []strin
 
 	// Notify when search completes
 	<-session.Done
-	conn.WriteJSON(map[string]string{"status": "completed"})
+	_ = conn.WriteJSON(map[string]string{"status": "completed"})
 }

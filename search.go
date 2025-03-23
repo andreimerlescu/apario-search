@@ -4,9 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/RoaringBitmap/roaring"
-	"github.com/andreimerlescu/gematria"
-	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
 	"os"
@@ -14,6 +11,10 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/RoaringBitmap/roaring"
+	"github.com/andreimerlescu/gematria"
+	"github.com/gin-gonic/gin"
 )
 
 func handleSearch(c *gin.Context) {

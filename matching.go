@@ -1,11 +1,12 @@
 package main
 
 import (
+	"log"
+	"strings"
+
 	"github.com/andreimerlescu/gematria"
 	"github.com/andreimerlescu/textee"
 	"github.com/xrash/smetrics"
-	"log"
-	"strings"
 )
 
 func matchesExactTextee(query string, textee *textee.Textee) bool {

@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/RoaringBitmap/roaring"
 	"io"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/RoaringBitmap/roaring"
 )
 
 func buildIndex(postingsFile, indexFile string) error {
@@ -26,7 +27,7 @@ func buildIndex(postingsFile, indexFile string) error {
 	defer outFile.Close()
 	writer := bufio.NewWriter(outFile)
 
-	tempDir := "temp_postings"
+	tempDir := filepath.Join(*cfg.String(kCacheDir), "temp_postings")
 	if err := os.MkdirAll(tempDir, 0755); err != nil {
 		return fmt.Errorf("create temp dir: %w", err)
 	}
