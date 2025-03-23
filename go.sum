@@ -6,6 +6,8 @@ github.com/andreimerlescu/configurable v1.0.0 h1:5N+qMsMkKGYFa6V9FmSpst6sIr8EM8E
 github.com/andreimerlescu/configurable v1.0.0/go.mod h1:lkFKa4qaT29VPhiChGoXXnFBbAPkIVtwWNfh57O25V8=
 github.com/andreimerlescu/gematria v1.0.1 h1:SFYWI5+mkzZqYXAspdjPWHzQnLi6yz+OGmAaJwcZKcA=
 github.com/andreimerlescu/gematria v1.0.1/go.mod h1:XU0Qa8gBi7pEqykfuIpkqET/3TIgdrxv1dEowwufOR4=
+github.com/andreimerlescu/go-sema v0.0.1 h1:+PijxhpaJXDDApRGnOOln23Cddb68T9+wkJtKFMcTuc=
+github.com/andreimerlescu/go-sema v0.0.1/go.mod h1:m7krZFMBkrhm0P/4vVLoeeqQMv0m9sC4r9HfjLGxA7k=
 github.com/andreimerlescu/textee v1.0.1 h1:CMaN1WP/ftQ8Np/iib99495RPT1efgbD8vDeNTyTQZs=
 github.com/andreimerlescu/textee v1.0.1/go.mod h1:3lPHdStV1Uct9r6hPxqTBq6xZurgwmSBU3pE99AUmek=
 github.com/bits-and-blooms/bitset v1.12.0/go.mod h1:7hO7Gc7Pp1vODcmWvKMRA9BNmbv6a/7QIWpPxHddWR8=

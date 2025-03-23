@@ -32,6 +32,8 @@ func init() {
 	cfg.NewInt(kWagnerFisherDCost, 1, "delete cost ; when removing a char to find a match ; increase the score by this number ; default = 1")
 	cfg.NewInt(kWagnerFisherMaxSubs, 2, "maximum number of substitutions allowed for a word to be considered a match ; higher value = lower accurate ; lower value = higher accuracy ; min = 0; default = 2")
 	cfg.NewInt(kHammingMaxSubs, 2, "maximum number of substitutions allowed for a word to be considered a match ; higher value = lower accuracy ; min = 1 ; default = 2")
+	cfg.NewInt(kWorkers, 17, "Number of workers to use to build the cache index")
+	cfg.NewBool(kBoost, false, "When enabled, the runtime.GOMAXPROCS(0) is overridden in worker concurrency offering 200% boost in concurrent limits")
 }
 
 func loadConfigs() error {

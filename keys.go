@@ -5,6 +5,8 @@ const (
 	kErrorLog                  string = "error-log"
 	kDir                       string = "dir"
 	kPort                      string = "port"
+	kWorkers                   string = "workers"
+	kBoost                     string = "boost"
 	kReaderDomain              string = "reader-domain"
 	kJaroThreshold             string = "jaro-threshold"
 	kJaroWinklerThreshold      string = "jaro-winkler-threshold"

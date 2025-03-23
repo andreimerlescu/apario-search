@@ -17,6 +17,7 @@ require (
 )
 
 require (
+	github.com/andreimerlescu/go-sema v0.0.1 // indirect
 	github.com/bits-and-blooms/bitset v1.22.0 // indirect
 	github.com/bytedance/sonic v1.11.6 // indirect
 	github.com/bytedance/sonic/loader v0.1.1 // indirect

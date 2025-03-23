@@ -9,6 +9,15 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// Result struct to hold the output of processing each OCR file.
+type processResult struct {
+	pageID       int
+	pageData     *PageData
+	wordPostings []string
+	gemPostings  []string
+	err          error
+}
+
 type PageData struct {
 	Textee              *textee.Textee
 	PageIdentifier      string
