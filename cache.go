@@ -15,76 +15,72 @@ func buildCache(dir string) (err error) {
 	// Open files for writing (create mode)
 	var cacheWriter *bufio.Writer
 	var cachedFile *os.File
+
 	theCacheFilePath := filepath.Join(*cfg.String(kCacheDir), cacheFile)
-	cacheWriter, cachedFile, err = FileAppender(
-		theCacheFilePath,
-		os.O_CREATE|os.O_WRONLY)
+	theCacheIndexFilePath := filepath.Join(*cfg.String(kCacheDir), cacheIndexFile)
+	theWordPostingsFilePath := filepath.Join(*cfg.String(kCacheDir), "word_postings.txt")
+	theGematriaPostingsFilePath := filepath.Join(*cfg.String(kCacheDir), "gematria_postings.txt")
+
+	cacheWriter, cachedFile, err = FileAppender(theCacheFilePath, os.O_CREATE|os.O_WRONLY)
 	if err != nil {
 		return fmt.Errorf("the FileAppender(%s) failed with: %v", theCacheFilePath, err)
 	}
 	defer cachedFile.Close()
 
-	idxWriter, idxFile, err := FileAppender(
-		filepath.Join(*cfg.String(kCacheDir), cacheIndexFile),
-		os.O_CREATE|os.O_WRONLY)
+	idxWriter, idxFile, err := FileAppender(theCacheIndexFilePath, os.O_CREATE|os.O_WRONLY)
 	if err != nil {
-		return err
+		return fmt.Errorf("the FileAppender(%s) failed with: %v", theCacheIndexFilePath, err)
 	}
 	defer idxFile.Close()
 
-	wordWriter, wordFile, err := FileAppender(
-		filepath.Join(*cfg.String(kCacheDir), "word_postings.txt"),
-		os.O_CREATE|os.O_WRONLY)
+	wordWriter, wordFile, err := FileAppender(theWordPostingsFilePath, os.O_CREATE|os.O_WRONLY)
 	if err != nil {
-		return err
+		return fmt.Errorf("the FileAppender(%s) failed with: %v", theWordPostingsFilePath, err)
 	}
 	defer wordFile.Close()
 
-	gemWriter, gemFile, err := FileAppender(
-		filepath.Join(*cfg.String(kCacheDir), "gematria_postings.txt"),
-		os.O_CREATE|os.O_WRONLY)
+	gemWriter, gemFile, err := FileAppender(theGematriaPostingsFilePath, os.O_CREATE|os.O_WRONLY)
 	if err != nil {
-		return err
+		return fmt.Errorf("the FileAppender(%s) failed with: %v", theGematriaPostingsFilePath, err)
 	}
 	defer gemFile.Close()
 
 	pageID := 0
 	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if err != nil ||
-			info.IsDir() ||
-			!strings.HasPrefix(info.Name(), "ocr.") ||
-			!strings.HasSuffix(info.Name(), ".txt") {
-			return nil
-		}
-
-		pageData, wordPostings, gemPostings, err := ProcessOCRFile(path, dir, pageID)
 		if err != nil {
 			return err
 		}
-		if pageData == nil {
-			return nil // Skip if not in 'pages'
-		}
 
-		// Append to cache and index
-		if err := AppendToCache(cacheWriter, idxWriter, pageData, pageID, cachedFile); err != nil {
-			return err
-		}
-
-		// Write postings
-		for _, posting := range wordPostings {
-			_, err = wordWriter.WriteString(posting + "\n")
+		if !info.IsDir() && strings.HasPrefix(info.Name(), "ocr.") && strings.HasSuffix(info.Name(), ".txt") {
+			pageData, wordPostings, gemPostings, err := ProcessOCRFile(path, dir, pageID)
 			if err != nil {
 				return err
 			}
-		}
-		for _, posting := range gemPostings {
-			_, err = gemWriter.WriteString(posting + "\n")
-			if err != nil {
+			if pageData == nil {
+				return nil // Skip if not in 'pages'
+			}
+
+			// Append to cache and index
+			if err := AppendToCache(cacheWriter, idxWriter, pageData, pageID, cachedFile); err != nil {
 				return err
 			}
-		}
 
-		pageID++
+			// Write postings
+			for _, posting := range wordPostings {
+				_, err = wordWriter.WriteString(posting + "\n")
+				if err != nil {
+					return err
+				}
+			}
+			for _, posting := range gemPostings {
+				_, err = gemWriter.WriteString(posting + "\n")
+				if err != nil {
+					return err
+				}
+			}
+
+			pageID++
+		}
 		return nil
 	})
 	if err != nil {

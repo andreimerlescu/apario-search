@@ -23,10 +23,9 @@ func main() {
 	cacheMutex = sync.RWMutex{}
 
 	// Set up logging to error.log
-	logFile, err := os.OpenFile("error.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	logFile, err := os.OpenFile(*cfg.String(kErrorLog), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Printf("Failed to open error.log: %v", err)
-		// Proceed without file logging but log to stderr
+		log.Fatalf("Failed to open error.log: %v", err)
 	}
 	defer logFile.Close()
 	errorLogger = log.New(logFile, "", log.LstdFlags)
