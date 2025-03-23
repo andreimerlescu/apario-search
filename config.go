@@ -13,6 +13,7 @@ func init() {
 	cfg.NewString(kDir, ".", "Directory to scan for ocr.*.txt files")
 	cfg.NewString(kPort, "18004", "HTTP port to use 1000-65534")
 	cfg.NewString(kCacheDir, filepath.Join(".", "cache"), "Path to the search cache index directory")
+	cfg.NewString(kReaderDomain, "idoread.com", "Domain name of the project excluding protocol path or query from the URL")
 	cfg.NewFloat64(kJaroThreshold, 0.71, "1.0 means exact match 0.0 means no match; default is 0.71")
 	cfg.NewFloat64(kJaroWinklerThreshold, 0.71, "using the JaroWinkler method, define the threshold that is tolerated; default is 0.71")
 	cfg.NewFloat64(kJaroWinklerBoostThreshold, 0.7, "weight applied to common prefixes in matched strings comparing dictionary terms, page word data, and search query params")

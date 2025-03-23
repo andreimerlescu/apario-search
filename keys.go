@@ -4,6 +4,7 @@ const (
 	kCacheDir                  string = "cache-dir"
 	kDir                       string = "dir"
 	kPort                      string = "port"
+	kReaderDomain              string = "reader-domain"
 	kJaroThreshold             string = "jaro-threshold"
 	kJaroWinklerThreshold      string = "jaro-winkler-threshold"
 	kJaroWinklerBoostThreshold string = "jaro-winkler-boost-threshold"

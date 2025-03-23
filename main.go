@@ -31,21 +31,26 @@ func main() {
 		cancel()
 	}()
 
-	// Build or load cache
-	log.Println("Initializing cache...")
-	err = buildCache(*cfg.String(kDir))
-	if err != nil {
-		log.Fatal(err)
-	}
-	for !isCacheReady.Load() {
-		log.Println("Waiting for cache to be ready...")
-		time.Sleep(100 * time.Millisecond) // Poll until ready
-	}
-	log.Println("Cache initialized successfully")
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		// Build or load cache
+		log.Println("Initializing cache...")
+		err = buildCache(*cfg.String(kDir))
+		if err != nil {
+			log.Fatal(err)
+		}
+		for !isCacheReady.Load() {
+			log.Println("Waiting for cache to be ready...")
+			time.Sleep(100 * time.Millisecond) // Poll until ready
+		}
+		log.Println("Cache initialized successfully")
+	}()
 
 	// Start web server with wait group for shutdown
-	var wg sync.WaitGroup
 	wg.Add(1)
+	log.Printf("apario-search has started for %s with ", *cfg.String(kReaderDomain))
 	go func() {
 		defer wg.Done()
 		webserver(ctx, *cfg.String(kPort), *cfg.String(kDir))
