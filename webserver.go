@@ -20,15 +20,15 @@ func webserver(ctx context.Context, port, dir string) {
 	go checkDataChanges(ctx, dir) // Start data change checker
 
 	var routeRateLimiter *limiter.Limiter
-	if *cfg.Bool(kRateLimitEnabled) {
-		routeRateLimiter = tollbooth.NewLimiter(*cfg.Float64(kRateLimitRequestsPerSecond), &limiter.ExpirableOptions{
-			DefaultExpirationTTL: time.Duration(*cfg.Int(kRateLimitTTL)) * time.Second,
+	if *cfigs.Bool(kRateLimitEnabled) {
+		routeRateLimiter = tollbooth.NewLimiter(*cfigs.Float64(kRateLimitRequestsPerSecond), &limiter.ExpirableOptions{
+			DefaultExpirationTTL: time.Duration(*cfigs.Int(kRateLimitTTL)) * time.Second,
 		})
 	}
 	// gin logs
-	f, f_err := os.OpenFile(*cfg.String(kAccessLog), os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0600)
+	f, f_err := os.OpenFile(*cfigs.String(kAccessLog), os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0600)
 	if f_err == nil { // no error received
-		if *cfg.Bool(kStdoutAccessLogs) { // logging to STDOUT + log file
+		if *cfigs.Bool(kStdoutAccessLogs) { // logging to STDOUT + log file
 			gin.DefaultWriter = io.MultiWriter(f, os.Stdout)
 		} else {
 			gin.DisableConsoleColor() // disable colors for logging to log file only
@@ -39,40 +39,40 @@ func webserver(ctx context.Context, port, dir string) {
 	r := gin.New()      // don't use .Default() here since we want Recover() to be disabled manually
 	r.Use(gin.Logger()) // Enable gin logging
 
-	if strings.EqualFold(*cfg.String(kRunMode), "production") {
+	if strings.EqualFold(*cfigs.String(kRunMode), "production") {
 		gin.SetMode(gin.ReleaseMode)
 		r.Use(gin.Recovery()) // enable recovery only in production mode
 	} else {
 		gin.SetMode(gin.DebugMode)
 	}
 
-	if *cfg.Bool(kRateLimitEnabled) {
+	if *cfigs.Bool(kRateLimitEnabled) {
 		r.Use(LimitHandler(routeRateLimiter))
 	}
-	if *cfg.Bool(kMiddlewareEnabledTLSHandshake) {
+	if *cfigs.Bool(kMiddlewareEnabledTLSHandshake) {
 		r.Use(middlewareTLSHandshake())
 	}
-	if *cfg.Bool(kMiddlewareEnabledIPBanList) {
+	if *cfigs.Bool(kMiddlewareEnabledIPBanList) {
 		r.Use(middlewareEnforceIPBan())
 		go scheduleIpBanListCleanup(ctx)
 	}
-	if *cfg.Bool(kCSPEnabled) {
+	if *cfigs.Bool(kCSPEnabled) {
 		r.Use(middlewareCSP())
 	}
-	if *cfg.Bool(kCORSEnabled) {
+	if *cfigs.Bool(kCORSEnabled) {
 		r.Use(middlewareCORS())
 	}
-	if *cfg.Bool(kMiddlewareEnableOnlineUsers) {
+	if *cfigs.Bool(kMiddlewareEnableOnlineUsers) {
 		r.Use(middlewareOnlineCounter())
 	}
 
 	_ = r.SetTrustedProxies([]string{"127.0.0.1"})
 
 	// Special Routes
-	if *cfg.Bool(kMiddlewareEnableRobotsTXT) {
+	if *cfigs.Bool(kMiddlewareEnableRobotsTXT) {
 		r.GET("/robots.txt", func(c *gin.Context) {
 			var contents []byte
-			path := *cfg.String(kMiddlewareRobotsTXTPath)
+			path := *cfigs.String(kMiddlewareRobotsTXTPath)
 			if len(path) > 0 {
 				fileBytes, fileErr := os.ReadFile(path)
 				if fileErr != nil {
@@ -88,10 +88,10 @@ func webserver(ctx context.Context, port, dir string) {
 			c.Data(http.StatusOK, "text/plain", contents)
 		})
 	}
-	if *cfg.Bool(kMiddlewareEnableAdsTXT) {
+	if *cfigs.Bool(kMiddlewareEnableAdsTXT) {
 		r.GET("/ads.txt", func(c *gin.Context) {
 			var contents []byte
-			path := *cfg.String(kMiddlewareAdsTXTPath)
+			path := *cfigs.String(kMiddlewareAdsTXTPath)
 			if len(path) > 0 {
 				file_bytes, file_err := os.ReadFile(path)
 				if file_err != nil {
@@ -107,10 +107,10 @@ func webserver(ctx context.Context, port, dir string) {
 			c.Data(http.StatusOK, "text/plain", contents)
 		})
 	}
-	if *cfg.Bool(kMiddlewareEnableSecurityTXT) {
+	if *cfigs.Bool(kMiddlewareEnableSecurityTXT) {
 		r.GET("/security.txt", func(c *gin.Context) {
 			var contents []byte
-			path := *cfg.String(kMiddlewareSecurityTXTPath)
+			path := *cfigs.String(kMiddlewareSecurityTXTPath)
 			if len(path) > 0 {
 				fileBytes, fileErr := os.ReadFile(path)
 				if fileErr != nil {
@@ -126,13 +126,13 @@ func webserver(ctx context.Context, port, dir string) {
 			c.Data(http.StatusOK, "text/plain", contents)
 		})
 	}
-	if *cfg.Bool(kEnablePing) {
+	if *cfigs.Bool(kEnablePing) {
 		r.Any("/ping", func(c *gin.Context) {
 			c.JSON(200, gin.H{"response": "PONG"})
 		})
 	}
-	if *cfg.Bool(kCSPEnabled) {
-		r.POST(*cfg.String(kCSPReportURI), func(c *gin.Context) {
+	if *cfigs.Bool(kCSPEnabled) {
+		r.POST(*cfigs.String(kCSPReportURI), func(c *gin.Context) {
 			var report map[string]interface{}
 			if err := c.ShouldBindJSON(&report); err != nil {
 				c.String(http.StatusBadRequest, "Invalid report data")

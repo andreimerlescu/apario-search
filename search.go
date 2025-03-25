@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/andreimerlescu/sema"
 	"io"
 	"log"
 	"net/http"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/RoaringBitmap/roaring"
 	"github.com/andreimerlescu/gematria"
+	"github.com/andreimerlescu/sema"
 	"github.com/gin-gonic/gin"
 )
 
@@ -25,10 +25,10 @@ func handleSearch(c *gin.Context) {
 	searchSemaphoresLock.RLock()                     // lock the sema reader
 	sem, ok := searchSemaphores[ip].(sema.Semaphore) // perform the read on the sema
 	if !ok || sem == nil {                           // perform the logic on the sema
-		searchSemaphoresLock.RUnlock()                               // unlock the sema reader
-		searchSemaphoresLock.Lock()                                  // lock the sema writer
-		searchSemaphores[ip] = sema.New(*cfg.Int(kPerIPSearchLimit)) // create new semaphore
-		searchSemaphoresLock.Unlock()                                // unlock the sema writer
+		searchSemaphoresLock.RUnlock()                                 // unlock the sema reader
+		searchSemaphoresLock.Lock()                                    // lock the sema writer
+		searchSemaphores[ip] = sema.New(*cfigs.Int(kPerIPSearchLimit)) // create new semaphore
+		searchSemaphoresLock.Unlock()                                  // unlock the sema writer
 	} else { // we are ok and we have a semaphore for the ip in question
 		searchSemaphoresLock.RUnlock() // unlock the sema reader
 	}
@@ -36,7 +36,7 @@ func handleSearch(c *gin.Context) {
 	searchSemaphoresLock.RLock()   // lock the sema reader
 	searchSemaphores[ip].Acquire() // acquire a lock for the ip
 	searchSemaphoresLock.RUnlock() // unlock the sema reader
-	defer func() { // when results delivered to user
+	defer func() {                 // when results delivered to user
 		searchSemaphoresLock.RLock()   // lock the sema reader
 		searchSemaphores[ip].Release() // release the lock for the ip
 		searchSemaphoresLock.RUnlock() // unlock the sema reader

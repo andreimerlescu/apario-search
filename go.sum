@@ -4,6 +4,8 @@ github.com/andreimerlescu/checkfs v1.0.1 h1:4w4tPgI20NEkVQbhES8GwgJDBuLpPdbdzYgI
 github.com/andreimerlescu/checkfs v1.0.1/go.mod h1:VBk2qYxPz4l8nbLnT2I9LYHJ8ygxRxAJv14dBYJQCrw=
 github.com/andreimerlescu/configurable v1.0.0 h1:5N+qMsMkKGYFa6V9FmSpst6sIr8EM8E9JdTtkSylA1o=
 github.com/andreimerlescu/configurable v1.0.0/go.mod h1:lkFKa4qaT29VPhiChGoXXnFBbAPkIVtwWNfh57O25V8=
+github.com/andreimerlescu/figs v1.0.0 h1:REAmxhSyXXs9cBNbirhpkk9Q0SUd19oIomR2GY3Gr/U=
+github.com/andreimerlescu/figs v1.0.0/go.mod h1:vEHFMWj5qFK3JVuoK64oWEJG+PAPjxqzoOFfWpecyF0=
 github.com/andreimerlescu/gematria v1.0.1 h1:SFYWI5+mkzZqYXAspdjPWHzQnLi6yz+OGmAaJwcZKcA=
 github.com/andreimerlescu/gematria v1.0.1/go.mod h1:XU0Qa8gBi7pEqykfuIpkqET/3TIgdrxv1dEowwufOR4=
 github.com/andreimerlescu/sema v1.0.0 h1:8ai/kqAci7QKUenAJWX13aYtWpjvD0CQW39CFzNIRQs=

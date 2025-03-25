@@ -61,20 +61,20 @@ func matchesConditionSingle(query, word string, algo string) bool {
 	// If no gematria match, use the specified string similarity algorithm
 	switch algo {
 	case "jaro":
-		return smetrics.Jaro(query, word) >= *cfg.Float64(kJaroThreshold)
+		return smetrics.Jaro(query, word) >= *cfigs.Float64(kJaroThreshold)
 	case "jaro-winkler":
-		return smetrics.JaroWinkler(query, word, *cfg.Float64(kJaroWinklerBoostThreshold), *cfg.Int(kJaroWinklerPrefixSize)) >= *cfg.Float64(kJaroWinklerThreshold)
+		return smetrics.JaroWinkler(query, word, *cfigs.Float64(kJaroWinklerBoostThreshold), *cfigs.Int(kJaroWinklerPrefixSize)) >= *cfigs.Float64(kJaroWinklerThreshold)
 	case "soundex":
 		return smetrics.Soundex(query) == smetrics.Soundex(word)
 	case "hamming":
 		subs, err := smetrics.Hamming(query, word)
-		return err == nil && subs <= *cfg.Int(kHammingMaxSubs)
+		return err == nil && subs <= *cfigs.Int(kHammingMaxSubs)
 	case "ukkonen":
-		score := smetrics.Ukkonen(query, word, *cfg.Int(kUkkonenICost), *cfg.Int(kUkkonenDCost), *cfg.Int(kUkkonenSCost))
-		return score <= *cfg.Int(kUkkonenMaxSubs)
+		score := smetrics.Ukkonen(query, word, *cfigs.Int(kUkkonenICost), *cfigs.Int(kUkkonenDCost), *cfigs.Int(kUkkonenSCost))
+		return score <= *cfigs.Int(kUkkonenMaxSubs)
 	case "wagner-fisher":
-		score := smetrics.WagnerFischer(query, word, *cfg.Int(kWagnerFisherICost), *cfg.Int(kWagnerFisherDCost), *cfg.Int(kWagnerFisherSCost))
-		return score <= *cfg.Int(kWagnerFisherMaxSubs)
+		score := smetrics.WagnerFischer(query, word, *cfigs.Int(kWagnerFisherICost), *cfigs.Int(kWagnerFisherDCost), *cfigs.Int(kWagnerFisherSCost))
+		return score <= *cfigs.Int(kWagnerFisherMaxSubs)
 	default:
 		log.Printf("Unknown algorithm: %s", algo)
 		return false

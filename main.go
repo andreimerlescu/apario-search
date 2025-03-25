@@ -28,7 +28,7 @@ func main() {
 	cacheMutex = sync.RWMutex{}
 
 	// Set up logging to error.log
-	logFile, err := os.OpenFile(*cfg.String(kErrorLog), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	logFile, err := os.OpenFile(*cfigs.String(kErrorLog), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatalf("Failed to open error.log: %v", err)
 	}
@@ -40,13 +40,13 @@ func main() {
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := sync.WaitGroup{}
-	systemSearchSemaphore = sema.New(*cfg.Int(kMaxSearches))
+	systemSearchSemaphore = sema.New(*cfigs.Int(kMaxSearches))
 
 	// Check cache integrity
 	cacheFiles := []string{cacheFile, cacheIndexFile, wordIndexFile, gemIndexFile}
 	cacheValid := true
 	for _, file := range cacheFiles {
-		filePath := filepath.Join(*cfg.String(kCacheDir), file)
+		filePath := filepath.Join(*cfigs.String(kCacheDir), file)
 		checksumPath := filePath + ".sha256"
 		if !verifyChecksum(filePath, checksumPath) {
 			cacheValid = false
@@ -69,7 +69,7 @@ func main() {
 			log.Println("Search data loaded successfully")
 		} else {
 			log.Println("Cache invalid or missing, rebuilding...")
-			if err := buildCache(*cfg.String(kDir)); err != nil {
+			if err := buildCache(*cfigs.String(kDir)); err != nil {
 				errorLogger.Printf("Cache initialization failed: %v", err)
 				cancel()
 				return
@@ -77,7 +77,7 @@ func main() {
 			log.Println("Cache initialized successfully")
 			// Generate checksums after build
 			for _, file := range cacheFiles {
-				filePath := filepath.Join(*cfg.String(kCacheDir), file)
+				filePath := filepath.Join(*cfigs.String(kCacheDir), file)
 				if err := generateChecksum(filePath); err != nil {
 					errorLogger.Printf("Failed to generate checksum for %s: %v", file, err)
 				}
@@ -95,8 +95,8 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		log.Printf("apario-search has started for %s", *cfg.String(kReaderDomain))
-		webserver(ctx, *cfg.String(kPort), *cfg.String(kDir))
+		log.Printf("apario-search has started for %s", *cfigs.String(kReaderDomain))
+		webserver(ctx, *cfigs.String(kPort), *cfigs.String(kDir))
 	}()
 
 	// Wait for shutdown signal

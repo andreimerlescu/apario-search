@@ -17,7 +17,7 @@ import (
 // and keeps the word_index.bin and apario-search-cache.jsonl files open for search operations.
 func loadSearchData() error {
 	// Load word index
-	wordIndexHandle, err := os.Open(filepath.Join(*cfg.String(kCacheDir), wordIndexFile))
+	wordIndexHandle, err := os.Open(filepath.Join(*cfigs.String(kCacheDir), wordIndexFile))
 	if err != nil {
 		return fmt.Errorf("failed to open word index file: %w", err)
 	}
@@ -43,7 +43,7 @@ func loadSearchData() error {
 	log.Printf("Loaded word index header with %d entries", len(wordIndexHeader))
 
 	// Load gematria index
-	gemIndexHandle, err = os.Open(filepath.Join(*cfg.String(kCacheDir), gemIndexFile))
+	gemIndexHandle, err = os.Open(filepath.Join(*cfigs.String(kCacheDir), gemIndexFile))
 	if err != nil {
 		return fmt.Errorf("failed to open gematria index file: %w", err)
 	}
@@ -68,7 +68,7 @@ func loadSearchData() error {
 	log.Printf("Loaded gematria index header with %d entries", len(wordIndexGematrias))
 
 	// Load cache index
-	cacheIdx, err := os.Open(filepath.Join(*cfg.String(kCacheDir), cacheIndexFile))
+	cacheIdx, err := os.Open(filepath.Join(*cfigs.String(kCacheDir), cacheIndexFile))
 	if err != nil {
 		return fmt.Errorf("failed to open cache index file: %w", err)
 	}
@@ -104,7 +104,7 @@ func loadSearchData() error {
 	log.Printf("Loaded cache index with %d entries", len(cacheIdToOffset))
 
 	// Open cache file
-	cacheFileHandle, err = os.Open(filepath.Join(*cfg.String(kCacheDir), cacheFile))
+	cacheFileHandle, err = os.Open(filepath.Join(*cfigs.String(kCacheDir), cacheFile))
 	if err != nil {
 		return fmt.Errorf("failed to open cache file: %w", err)
 	}

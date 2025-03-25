@@ -5,7 +5,6 @@ go 1.23.4
 require (
 	github.com/RoaringBitmap/roaring v1.9.4
 	github.com/andreimerlescu/checkfs v1.0.1
-	github.com/andreimerlescu/configurable v1.0.0
 	github.com/andreimerlescu/gematria v1.0.1
 	github.com/andreimerlescu/sema v1.0.0
 	github.com/andreimerlescu/textee v1.0.1
@@ -19,6 +18,7 @@ require (
 )
 
 require (
+	github.com/andreimerlescu/figs v1.0.0 // indirect
 	github.com/bits-and-blooms/bitset v1.22.0 // indirect
 	github.com/bytedance/sonic v1.11.6 // indirect
 	github.com/bytedance/sonic/loader v0.1.1 // indirect

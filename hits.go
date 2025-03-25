@@ -60,7 +60,7 @@ func persistHitsOffline(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-time.After(time.Second * 30): // Save the hits to disk every 30 seconds
-			hitFile, openErr := os.OpenFile(*cfg.String(kHitsStorePath), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
+			hitFile, openErr := os.OpenFile(*cfigs.String(kHitsStorePath), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 			if openErr != nil {
 				log.Printf("Error opening IP ban file for writing: %v", openErr)
 				return
@@ -73,7 +73,7 @@ func persistHitsOffline(ctx context.Context) {
 			}
 
 		case <-time.After(time.Minute * 3): // reload hits from disk every 3 minutes
-			hitFile, openErr := os.OpenFile(*cfg.String(kHitsStorePath), os.O_RDONLY, 0600)
+			hitFile, openErr := os.OpenFile(*cfigs.String(kHitsStorePath), os.O_RDONLY, 0600)
 			if openErr != nil {
 				log.Printf("Error opening Hits: %v", openErr)
 				return

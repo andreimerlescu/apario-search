@@ -83,7 +83,7 @@ func ipInBanList(ip net.IP) bool {
 }
 
 func scheduleIpBanListCleanup(ctx context.Context) {
-	ticker1 := time.NewTicker(time.Duration(*cfg.Int(kCleanupIPBanListEvery)) * time.Minute)
+	ticker1 := time.NewTicker(time.Duration(*cfigs.Int(kCleanupIPBanListEvery)) * time.Minute)
 	ticker2 := time.NewTicker(3 * time.Minute) // every 3 minutes save to disk
 	ticker3 := time.NewTicker(6 * time.Minute) // every 6 minutes restore from disk
 	for {
@@ -101,7 +101,7 @@ func scheduleIpBanListCleanup(ctx context.Context) {
 }
 
 func performIpBanFsLoad(ctx context.Context) {
-	ipFile, openErr := os.OpenFile(*cfg.String(kIPBanFile), os.O_RDONLY, 0600)
+	ipFile, openErr := os.OpenFile(*cfigs.String(kIPBanFile), os.O_RDONLY, 0600)
 	if openErr != nil {
 		log.Printf("Error opening IP ban file: %v", openErr)
 		return
@@ -150,7 +150,7 @@ func performIpBanFsSync(ctx context.Context) {
 	}
 	ipBanLocker.RUnlock()
 
-	ipFile, openErr := os.OpenFile(*cfg.String(kIPBanFile), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
+	ipFile, openErr := os.OpenFile(*cfigs.String(kIPBanFile), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 	if openErr != nil {
 		log.Printf("Error opening IP ban file for writing: %v", openErr)
 		return
@@ -168,7 +168,7 @@ func performIpBanListCleanup(ctx context.Context) {
 	ipBanLocker.RLock()
 	ips := slices.Clone(ipBanned)
 	ipBanLocker.RUnlock()
-	duration := time.Duration(*cfg.Int(kIPBanDuration)) * time.Millisecond
+	duration := time.Duration(*cfigs.Int(kIPBanDuration)) * time.Millisecond
 	timeoutCtx, cancel := context.WithTimeout(ctx, duration)
 	defer cancel()
 	breakFor := atomic.Bool{}
@@ -189,7 +189,7 @@ func performIpBanListCleanup(ctx context.Context) {
 				break
 			case <-time.Tick(10 * time.Millisecond):
 				count := tryLockCount.Add(1)
-				if count < int64(*cfg.Int(kIPBanDuration)) && !breakFor.Load() && results.mu.TryLock() { // max 170ms to unlock
+				if count < int64(*cfigs.Int(kIPBanDuration)) && !breakFor.Load() && results.mu.TryLock() { // max 170ms to unlock
 					results.mu.Lock()
 					results.Entries = make(map[string]SavedIP)
 					results.mu.Unlock()

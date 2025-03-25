@@ -1,14 +1,14 @@
 package main
 
 import (
-	"github.com/andreimerlescu/sema"
 	"log"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sync"
 
-	"github.com/andreimerlescu/configurable"
+	"github.com/andreimerlescu/figs"
+	"github.com/andreimerlescu/sema"
 )
 
 var (
@@ -27,9 +27,9 @@ var (
 	// It ensures thread safety during cache initialization, updates, and searches.
 	cacheMutex sync.RWMutex
 
-	// cfg holds the application’s configuration settings, loaded from a YAML file or environment defaults.
+	// cfigs holds the application’s configuration settings, loaded from a YAML file or environment defaults.
 	// It includes paths (e.g., cache directory), ports, and matching algorithm thresholds.
-	cfg configurable.IConfigurable
+	cfigs figs.Fruit
 
 	// configFile specifies the default path to the configuration file ("./config.yaml") if no environment variable override is provided.
 	// Used by loadConfigs() as a fallback when configEnvKey is unset or invalid.

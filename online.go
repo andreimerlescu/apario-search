@@ -59,7 +59,7 @@ func handlerOnlineCounter(c *gin.Context) {
 			IP:            nip,
 			FirstAction:   time.Now().UTC(),
 			LastAction:    time.Now().UTC(),
-			DeleteOn:      time.Now().UTC().Add(time.Duration(*cfg.Int(kShowOnlineLastMinutes)) * time.Minute),
+			DeleteOn:      time.Now().UTC().Add(time.Duration(*cfigs.Int(kShowOnlineLastMinutes)) * time.Minute),
 			Hits:          &atomic.Int64{},
 			LastPath:      c.Request.URL.Path,
 			Authenticated: false,
@@ -71,7 +71,7 @@ func handlerOnlineCounter(c *gin.Context) {
 		entry.Hits.Add(1)
 		entry.LastPath = c.Request.URL.Path
 		entry.LastAction = time.Now().UTC()
-		entry.DeleteOn = time.Now().UTC().Add(time.Duration(*cfg.Int(kShowOnlineLastMinutes)) * time.Minute)
+		entry.DeleteOn = time.Now().UTC().Add(time.Duration(*cfigs.Int(kShowOnlineLastMinutes)) * time.Minute)
 		entry.UserAgent = c.Request.Header.Get("User-Agent")
 
 		onlineLocker.Lock()

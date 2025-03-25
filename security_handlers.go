@@ -12,14 +12,14 @@ import (
 // kCORSAllowOrigin, kCORSAllowMethods, kCORSAllowHeaders and kCORSAllowCredentials
 func handlerCORS(c *gin.Context) {
 	var allow_creds string
-	if *cfg.Bool(kCORSAllowCredentials) == true {
+	if *cfigs.Bool(kCORSAllowCredentials) == true {
 		allow_creds = "true"
 	} else {
 		allow_creds = "false"
 	}
-	c.Writer.Header().Set("Access-Control-Allow-Origin", *cfg.String(kCORSAllowOrigin))
-	c.Writer.Header().Set("Access-Control-Allow-Methods", *cfg.String(kCORSAllowMethods))
-	c.Writer.Header().Set("Access-Control-Allow-Headers", *cfg.String(kCORSAllowHeaders))
+	c.Writer.Header().Set("Access-Control-Allow-Origin", *cfigs.String(kCORSAllowOrigin))
+	c.Writer.Header().Set("Access-Control-Allow-Methods", *cfigs.String(kCORSAllowMethods))
+	c.Writer.Header().Set("Access-Control-Allow-Headers", *cfigs.String(kCORSAllowHeaders))
 	c.Writer.Header().Set("Access-Control-Allow-Credentials", allow_creds)
 
 	if c.Request.Method == "OPTIONS" {
@@ -30,7 +30,7 @@ func handlerCORS(c *gin.Context) {
 
 // handlerForceHttps upgrades HTTP:// with HTTPS:// on URLs with a HTTP 301 on the redirect
 func handlerForceHttps(c *gin.Context) {
-	if *cfg.Bool(kForceHTTPS) {
+	if *cfigs.Bool(kForceHTTPS) {
 		r_url := c.Request.URL
 		r_url.Scheme = "https"
 		r_url.Host = c.Request.Host
@@ -55,9 +55,9 @@ func handlerTlsHandshake(c *gin.Context) {
 // on the config properties kCSPDomains, kCSPWebSocketDomains, and the other kCSP... values
 func handlerContentSecurityPolicy(c *gin.Context) {
 	var domains []string
-	if len(*cfg.String(kCSPDomains)) > 1 {
+	if len(*cfigs.String(kCSPDomains)) > 1 {
 		// parse the flag/config CSV values and sanitize the string
-		_domains := strings.Split(*cfg.String(kCSPDomains), ",")
+		_domains := strings.Split(*cfigs.String(kCSPDomains), ",")
 		for _, domain := range _domains {
 			domain = strings.ReplaceAll(domain, " ", "")
 			if len(domain) > 0 {
@@ -67,9 +67,9 @@ func handlerContentSecurityPolicy(c *gin.Context) {
 	}
 
 	var wsDomains []string
-	if len(*cfg.String(kCSPWebSocketDomains)) > 1 {
+	if len(*cfigs.String(kCSPWebSocketDomains)) > 1 {
 		// parse the flag/config CSV values and sanitize the string
-		_domains := strings.Split(*cfg.String(kCSPWebSocketDomains), ",")
+		_domains := strings.Split(*cfigs.String(kCSPWebSocketDomains), ",")
 		for _, domain := range _domains {
 			domain = strings.ReplaceAll(domain, " ", "")
 			if len(domain) > 0 {
@@ -79,9 +79,9 @@ func handlerContentSecurityPolicy(c *gin.Context) {
 	}
 
 	var thirdPartyStyles []string
-	if len(*cfg.String(kCSPThirdPartyScriptDomains)) > 1 {
+	if len(*cfigs.String(kCSPThirdPartyScriptDomains)) > 1 {
 		// parse the flag/config CSV values and sanitize the string
-		_domains := strings.Split(*cfg.String(kCSPThirdPartyStyleDomains), ",")
+		_domains := strings.Split(*cfigs.String(kCSPThirdPartyStyleDomains), ",")
 		for _, domain := range _domains {
 			domain = strings.ReplaceAll(domain, " ", "")
 			if len(domain) > 0 {
@@ -91,9 +91,9 @@ func handlerContentSecurityPolicy(c *gin.Context) {
 	}
 	// List of domains allowed for thirdParty usage
 	var thirdParty []string
-	if len(*cfg.String(kCSPThirdPartyScriptDomains)) > 1 {
+	if len(*cfigs.String(kCSPThirdPartyScriptDomains)) > 1 {
 		// parse the flag/config CSV values and sanitize the string
-		_domains := strings.Split(*cfg.String(kCSPThirdPartyScriptDomains), ",")
+		_domains := strings.Split(*cfigs.String(kCSPThirdPartyScriptDomains), ",")
 		for _, domain := range _domains {
 			domain = strings.ReplaceAll(domain, " ", "")
 			if len(domain) > 0 {
@@ -111,22 +111,22 @@ func handlerContentSecurityPolicy(c *gin.Context) {
 	blockMixed := ""
 
 	// Depending on config flags, set the policy defaults
-	if *cfg.Bool(kCSPScriptUnsafeInlineEnabled) {
+	if *cfigs.Bool(kCSPScriptUnsafeInlineEnabled) {
 		scriptUnsafeInline = "'unsafe-inline'"
 	}
-	if *cfg.Bool(kCSPScriptUnsafeEvalEnabled) {
+	if *cfigs.Bool(kCSPScriptUnsafeEvalEnabled) {
 		scriptUnsafeEval = "'unsafe-eval'"
 	}
-	if *cfg.Bool(kCSPChildScriptUnsafeInlineEnabled) {
+	if *cfigs.Bool(kCSPChildScriptUnsafeInlineEnabled) {
 		childUnsafeInline = "'unsafe-inline'"
 	}
-	if *cfg.Bool(kCSPStyleUnsafeInlineEnabled) {
+	if *cfigs.Bool(kCSPStyleUnsafeInlineEnabled) {
 		styleUnsafeInline = "'unsafe-inline'"
 	}
-	if *cfg.Bool(kCSPUpgradeRequests) {
+	if *cfigs.Bool(kCSPUpgradeRequests) {
 		upgradeInsecure = "upgrade-insecure-requests;"
 	}
-	if *cfg.Bool(kCSPBlockMixedContent) {
+	if *cfigs.Bool(kCSPBlockMixedContent) {
 		blockMixed = "block-all-mixed-content;"
 	}
 
@@ -140,7 +140,7 @@ func handlerContentSecurityPolicy(c *gin.Context) {
 			"child-src 'self' "+childUnsafeInline+" blob: data: "+strings.Join(domains, " ")+" "+strings.Join(thirdParty, " ")+"; "+
 			"style-src data: "+styleUnsafeInline+" "+strings.Join(domains, " ")+" "+strings.Join(thirdPartyStyles, " ")+"; "+
 			"connect-src 'self' blob: "+strings.Join(domains, " ")+" "+strings.Join(wsDomains, " ")+"; "+
-			"report-uri "+*cfg.String(kCSPReportURI)+"; "+
+			"report-uri "+*cfigs.String(kCSPReportURI)+"; "+
 			upgradeInsecure+
 			blockMixed)
 
@@ -169,13 +169,13 @@ func handlerNoRouteLinter(c *gin.Context) {
 	requestedURL := c.Request.URL.Path
 
 	var endpointIs []string
-	if len(*cfg.String(kAutoBanHitPaths)) > 2 {
-		endpointIs = strings.Split(*cfg.String(kAutoBanHitPaths), "|")
+	if len(*cfigs.String(kAutoBanHitPaths)) > 2 {
+		endpointIs = strings.Split(*cfigs.String(kAutoBanHitPaths), "|")
 	}
 
 	var endpointContains []string
-	if len(*cfg.String(kAutoBanHitPathContains)) > 2 {
-		endpointContains = strings.Split(*cfg.String(kAutoBanHitPathContains), "|")
+	if len(*cfigs.String(kAutoBanHitPathContains)) > 2 {
+		endpointContains = strings.Split(*cfigs.String(kAutoBanHitPathContains), "|")
 	}
 
 	ip := FilteredIP(c)

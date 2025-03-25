@@ -16,10 +16,10 @@ func buildCache(dir string) (err error) {
 	defer cacheMutex.Unlock()
 
 	// Define file paths for cache and indexes.
-	theCacheFilePath := filepath.Join(*cfg.String(kCacheDir), cacheFile)
-	theCacheIndexFilePath := filepath.Join(*cfg.String(kCacheDir), cacheIndexFile)
-	theWordPostingsFilePath := filepath.Join(*cfg.String(kCacheDir), "word_postings.txt")
-	theGematriaPostingsFilePath := filepath.Join(*cfg.String(kCacheDir), "gematria_postings.txt")
+	theCacheFilePath := filepath.Join(*cfigs.String(kCacheDir), cacheFile)
+	theCacheIndexFilePath := filepath.Join(*cfigs.String(kCacheDir), cacheIndexFile)
+	theWordPostingsFilePath := filepath.Join(*cfigs.String(kCacheDir), "word_postings.txt")
+	theGematriaPostingsFilePath := filepath.Join(*cfigs.String(kCacheDir), "gematria_postings.txt")
 
 	// Open files for writing (create mode).
 	cacheWriter, cachedFile, err := FileAppender(theCacheFilePath, os.O_CREATE|os.O_WRONLY)
@@ -62,14 +62,14 @@ func buildCache(dir string) (err error) {
 	}
 
 	// Step 2: Set up concurrency with a semaphore to limit the number of goroutines.
-	workerLimit := *cfg.Int(kWorkers)
+	workerLimit := *cfigs.Int(kWorkers)
 	if workerLimit == 0 || workerLimit == -1 {
 		workerLimit = runtime.GOMAXPROCS(0)
 	} else if workerLimit < 1 {
 		workerLimit = 1
-	} else if n := runtime.GOMAXPROCS(0); !*cfg.Bool(kBoost) && workerLimit > n {
+	} else if n := runtime.GOMAXPROCS(0); !*cfigs.Bool(kBoost) && workerLimit > n {
 		workerLimit = n
-	} else if *cfg.Bool(kBoost) {
+	} else if *cfigs.Bool(kBoost) {
 		if workerLimit < runtime.GOMAXPROCS(0) {
 			workerLimit = runtime.GOMAXPROCS(0) * 2
 		}
@@ -167,13 +167,13 @@ func buildCache(dir string) (err error) {
 	}
 
 	// Step 7: Build the indexes (this part remains sequential for now).
-	postingsFilePath := filepath.Join(*cfg.String(kCacheDir), "word_postings.txt")
-	wordIndexFilePath := filepath.Join(*cfg.String(kCacheDir), wordIndexFile)
+	postingsFilePath := filepath.Join(*cfigs.String(kCacheDir), "word_postings.txt")
+	wordIndexFilePath := filepath.Join(*cfigs.String(kCacheDir), wordIndexFile)
 	if err = buildIndex(postingsFilePath, wordIndexFilePath); err != nil {
 		return fmt.Errorf("building word index failed: %v", err)
 	}
-	gematriasFilePath := filepath.Join(*cfg.String(kCacheDir), "gematria_postings.txt")
-	gemIndexFilePath := filepath.Join(*cfg.String(kCacheDir), gemIndexFile)
+	gematriasFilePath := filepath.Join(*cfigs.String(kCacheDir), "gematria_postings.txt")
+	gemIndexFilePath := filepath.Join(*cfigs.String(kCacheDir), gemIndexFile)
 	if err = buildIndex(gematriasFilePath, gemIndexFilePath); err != nil {
 		return fmt.Errorf("building gematria index failed: %v", err)
 	}
