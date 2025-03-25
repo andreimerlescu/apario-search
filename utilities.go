@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,6 +15,51 @@ import (
 	"github.com/andreimerlescu/gematria"
 	"github.com/andreimerlescu/textee"
 )
+
+// verifyChecksum checks if the file matches its stored SHA256 checksum
+func verifyChecksum(filePath, checksumPath string) bool {
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return false
+	}
+	if _, err := os.Stat(checksumPath); os.IsNotExist(err) {
+		return false
+	}
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		return false
+	}
+	defer file.Close()
+
+	hash := sha256.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return false
+	}
+	computedChecksum := fmt.Sprintf("%x", hash.Sum(nil))
+
+	storedChecksum, err := os.ReadFile(checksumPath)
+	if err != nil {
+		return false
+	}
+	return strings.TrimSpace(string(storedChecksum)) == computedChecksum
+}
+
+// generateChecksum creates a SHA256 checksum file
+func generateChecksum(filePath string) error {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	hash := sha256.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return err
+	}
+	checksum := fmt.Sprintf("%x", hash.Sum(nil))
+
+	return os.WriteFile(filePath+".sha256", []byte(checksum), 0644)
+}
 
 // FileAppender opens a file with the specified mode and returns a buffered writer and file handle.
 func FileAppender(filename string, mode int) (*bufio.Writer, *os.File, error) {
@@ -127,15 +173,15 @@ func AppendToCache(cacheWriter *bufio.Writer, idxWriter *bufio.Writer, pageData 
 	if err != nil {
 		return err
 	}
-	_, err = cacheWriter.Write(data)
+	i1, err := cacheWriter.Write(data)
 	if err != nil {
 		return err
 	}
-	_, err = cacheWriter.WriteString("\n")
+	i2, err := cacheWriter.WriteString("\n")
 	if err != nil {
 		return err
 	}
-	length := int64(len(data))
+	length := int64(i1 + i2)
 	_, err = idxWriter.WriteString(strconv.Itoa(pageID) + " " + strconv.FormatInt(offset, 10) + " " + strconv.FormatInt(length, 10) + "\n")
 	return err
 }

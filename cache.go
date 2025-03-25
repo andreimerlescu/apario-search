@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	sema "github.com/andreimerlescu/go-sema"
+	"github.com/andreimerlescu/sema"
 )
 
 func buildCache(dir string) (err error) {

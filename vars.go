@@ -1,15 +1,20 @@
 package main
 
 import (
+	"github.com/andreimerlescu/sema"
 	"log"
+	"os"
 	"path/filepath"
 	"regexp"
 	"sync"
-	
+
 	"github.com/andreimerlescu/configurable"
 )
 
 var (
+	// runModes define the runtime of the gin web server, development local release and staging are search specific though
+	runModes = []string{"local", "development", "release", "staging", "production"}
+
 	// dataChanged indicates whether new data (e.g., OCR files) has been detected during periodic directory scans.
 	// It triggers cache updates when set to true by the watcher.
 	dataChanged bool
@@ -74,4 +79,49 @@ var (
 		activeSearches: make(map[string]*SearchSession),
 		cache:          make(map[string]*SearchResult),
 	}
+
+	// wordIndexHeader is the in-memory map of words to [offset, length] pairs from word_index.bin.
+	// Loaded at startup to avoid reading the file on every search request.
+	wordIndexHeader map[string][2]int64 // TODO cant use this because duplicates for the key are needed to be preserved for multiple page results
+
+	// wordIndexHandle is the file handle for word_index.bin, kept open for the lifetime of the application.
+	// Used to read bitmaps during search without reopening the file.
+	wordIndexHandle *os.File
+
+	// cacheIdToOffset is the in-memory map of page IDs to [offset, length] pairs from cache_index.txt.
+	// Loaded at startup to avoid reading the file on every search request.
+	cacheIdToOffset map[int][2]int64
+
+	// cacheFileHandle is the file handle for apario-search-cache.jsonl, kept open for the lifetime of the application.
+	// Used to read PageData structs during search without reopening the file.
+	cacheFileHandle *os.File
+
+	// searchSemaphores provide per-IP limits on concurrent searches allowed and enforced with a semaphore instead of rate limiting alone
+	searchSemaphores     = make(map[string]sema.Semaphore)
+	searchSemaphoresLock = sync.RWMutex{}
+
+	// systemSearchSemaphore is used for an application-wide limit on max concurrent searches allowed for all sessions
+	systemSearchSemaphore sema.Semaphore
+
+	// wordIndexGematrias maps gematria keys (e.g., "english_123") to the offset and length of their Roaring Bitmaps
+	// in gematria_index.bin, containing page IDs where the gematria value appears.
+	wordIndexGematrias map[string][2]int64
+
+	// gemIndexHandle is the file handle for gematria_index.bin, kept open for the lifetime of the application.
+	gemIndexHandle *os.File
 )
+
+const (
+	kilobyte = 1024
+	megabyte = 1024 * kilobyte
+	gigabyte = 1024 * megabyte
+	terabyte = 1024 * gigabyte
+	petabyte = 1024 * terabyte
+)
+
+const DefaultRobotsTxt = `User-agent: *
+Disallow: /`
+
+const DefaultAdsTxt = ``
+
+const DefaultSecurityTxt = ``
